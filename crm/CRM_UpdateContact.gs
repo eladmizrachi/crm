@@ -90,12 +90,14 @@ function updateContact(payload) {
       'Address':       payload.address || '',
     };
 
-    const row = sh.getRange(payload._rowIndex, 1, 1, lastCol).getValues()[0];
+    const range = sh.getRange(payload._rowIndex, 1, 1, lastCol);
+    const row = range.getValues()[0];
     headers.forEach(function(h, i) {
       const key = Object.keys(fieldMap).find(function(k) { return k.trim().toLowerCase() === h.trim().toLowerCase(); });
       if (key !== undefined) row[i] = fieldMap[key];
     });
-    sh.getRange(payload._rowIndex, 1, 1, lastCol).setValues([row]);
+    range.clearDataValidations();
+    range.setValues([row]);
 
     return { ok: true, msg: payload.firstName + ' ' + payload.lastName + ' updated successfully!' };
   } catch(e) {

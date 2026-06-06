@@ -241,8 +241,10 @@ function saveNewContact(data) {
       }
     }
 
-    // Build and append the row — keys match exact Contacts sheet headers
-    contactSheet.appendRow(buildContactRow(headers, {
+    // Build the row and write it — clear any data validation first so
+    // values like Hebrew text aren't rejected by sheet-level rules.
+    const newRowIndex = contactSheet.getLastRow() + 1;
+    const rowValues = buildContactRow(headers, {
       "First Name":    data.firstName,
       "Last Name ":    data.lastName,
       "Date of Birth": dobFormatted,
@@ -251,7 +253,10 @@ function saveNewContact(data) {
       "Phone Number":  data.phone,
       "Email":         data.email,
       "Address":       data.address || "",
-    }));
+    });
+    const newRange = contactSheet.getRange(newRowIndex, 1, 1, rowValues.length);
+    newRange.clearDataValidations();
+    newRange.setValues([rowValues]);
 
     // Auto-search the organization so the new contact appears immediately
     runSearch(data.organization);
