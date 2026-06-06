@@ -26,6 +26,14 @@ function norm(val) {
   return String(val || "").trim().toLowerCase();
 }
 
+// Case-insensitive field lookup — handles header name mismatches
+function getField(obj, name) {
+  if (obj.hasOwnProperty(name)) return obj[name];
+  const low = name.toLowerCase().replace(/\s+/g, '');
+  const key = Object.keys(obj).find(k => k.toLowerCase().replace(/\s+/g, '') === low);
+  return key !== undefined ? obj[key] : '';
+}
+
 function fmtDate(val) {
   if (!val || val === "") return "—";
   if (val instanceof Date) return Utilities.formatDate(val, Session.getScriptTimeZone(), "dd/MM/yyyy");
@@ -338,11 +346,11 @@ function populateContacts(ss, contacts) {
   const sh = ss.getSheetByName(OUT.CONTACTS);
   if (!sh) return;
 
-  sh.getRange("A3:I100").clearContent().clearFormat().setBackground("#FAFAFA");
+  sh.getRange("A3:J100").clearContent().clearFormat().setBackground("#FAFAFA");
 
   const LABEL_BG = "#e8eaf6", BORDER = "#9fa8da", ROW_ALT = "#f5f5ff";
 
-  const headers = ["First Name", "Last Name", "Position", "Organization", "Phone Number", "Date of Birth", "Email"];
+  const headers = ["First Name", "Last Name", "Position", "Organization", "Phone Number", "Date of Birth", "Email", "Address"];
   headers.forEach((h, i) => {
     sh.getRange(3, i + 2)
       .setValue(h).setBackground(LABEL_BG).setFontWeight("bold").setFontSize(11)
@@ -364,11 +372,12 @@ function populateContacts(ss, contacts) {
     sh.getRange(row, 6).setValue(fmtVal(c["Phone Number"])).setBackground(bg);
     sh.getRange(row, 7).setValue(fmtDate(c["Date of Birth"])).setBackground(bg);
     sh.getRange(row, 8).setValue(fmtVal(c["Email"])).setBackground(bg);
+    sh.getRange(row, 9).setValue(fmtVal(getField(c, "Address"))).setBackground(bg);
     sh.getRange(row, 1).setBackground(bg);
-    sh.getRange(row, 9).setBackground(bg);
+    sh.getRange(row, 10).setBackground(bg);
   });
 
-  sh.getRange(3, 2, contacts.length + 1, 7)
+  sh.getRange(3, 2, contacts.length + 1, 8)
     .setBorder(true, true, true, true, true, true, BORDER, SpreadsheetApp.BorderStyle.SOLID_THIN);
 }
 
