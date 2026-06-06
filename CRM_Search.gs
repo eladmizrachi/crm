@@ -26,6 +26,14 @@ function norm(val) {
   return String(val || "").trim().toLowerCase();
 }
 
+// Case-insensitive field lookup — handles header name mismatches
+function getField(obj, name) {
+  if (obj.hasOwnProperty(name)) return obj[name];
+  const low = name.toLowerCase().replace(/\s+/g, '');
+  const key = Object.keys(obj).find(k => k.toLowerCase().replace(/\s+/g, '') === low);
+  return key !== undefined ? obj[key] : '';
+}
+
 function fmtDate(val) {
   if (!val || val === "") return "—";
   if (val instanceof Date) return Utilities.formatDate(val, Session.getScriptTimeZone(), "dd/MM/yyyy");
@@ -364,7 +372,7 @@ function populateContacts(ss, contacts) {
     sh.getRange(row, 6).setValue(fmtVal(c["Phone Number"])).setBackground(bg);
     sh.getRange(row, 7).setValue(fmtDate(c["Date of Birth"])).setBackground(bg);
     sh.getRange(row, 8).setValue(fmtVal(c["Email"])).setBackground(bg);
-    sh.getRange(row, 9).setValue(fmtVal(c["Address"])).setBackground(bg);
+    sh.getRange(row, 9).setValue(fmtVal(getField(c, "Address"))).setBackground(bg);
     sh.getRange(row, 1).setBackground(bg);
     sh.getRange(row, 10).setBackground(bg);
   });
