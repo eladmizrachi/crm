@@ -108,10 +108,12 @@ function saveUpdatedPO(payload) {
       'Proposal link':       payload.proposalLink,
       'Billing Type':        payload.billingType,
       'Renwal Date':         fmtDate(payload.renewalDate),
-      'Commbox ARR':         payload.commboxARR || '',
+      'Commbox ARR':          payload.commboxARR        || '',
+      'Commbox Hourly Rate':  payload.commboxHourlyRate || '',
       'Recurring Period':    recurringPeriod || '',
       'Currency':            payload.currency || 'NIS',
-      'Exchange Rate':       exchangeRate
+      'Exchange Rate':       exchangeRate,
+      'Start Date':          fmtDate(payload.startDate) || ''
     };
 
     const row = sh.getRange(payload._rowIndex, 1, 1, lastCol).getValues()[0];
@@ -141,6 +143,7 @@ function openUpdatePODialog() {
 const UPDATE_PO_HTML = `<!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <style>
 *,*::before,*::after{box-sizing:border-box}
 body{font-family:'Google Sans',Arial,sans-serif;background:#f3f4ff;margin:0;padding:14px 18px 18px;font-size:13px;color:#1a237e}
@@ -261,6 +264,8 @@ function go() {
       _curRate = parseFloat(r.data['Exchange Rate']) || 1;
       gst('PO found. Edit the fields below and save.', 'ok');
       document.getElementById('res').innerHTML = buildCard(r.data, r.rowIndex, r.orgs || [], r.activities || []);
+      var projEl = document.getElementById('f_project');
+      if (projEl) projEl.onchange = onProjChange;
       calcTotal();
     })
     .withFailureHandler(function(e) {
@@ -278,7 +283,7 @@ function buildCard(o, rowIndex, orgs, acts) {
 
   var btSel = '<select id="f_billing" onchange="onBtChange()">'
     + '<option value="">-- Select --</option>'
-    + ['Hourly','Fixed Project','Recurring'].map(function(v) {
+    + ['Hourly','Fixed Project','Recurring','Milestones'].map(function(v) {
         return '<option value="' + v + '"' + (v === curBt ? ' selected' : '') + '>' + v + '</option>';
       }).join('')
     + '</select>';
@@ -323,7 +328,12 @@ function buildCard(o, rowIndex, orgs, acts) {
   h += '</div>';
   h += fi('Milestones',   '<input type="text" id="f_milestones" value="' + esc(o['Milestones']||'')   + '" />', false, true);
   h += fi('Renewal Date', '<input type="date" id="f_renewal"    value="' + toInp(o['Renwal Date']||'') + '" />', false, true);
+  h += '<div id="f_startDateRow" style="display:' + (curBt === 'Recurring' ? 'block' : 'none') + '">';
+  h += fi('Start Date', '<input type="date" id="f_startDate" value="' + toInp(o['Start Date']||'') + '" />', false, true);
+  h += '</div>';
+  var isSupport = (o['Project'] || '').trim().toLowerCase() === 'support';
   h += fi('Commbox ARR (' + sym + ')', '<input type="number" id="f_commboxARR" value="' + esc(o['Commbox ARR']||'') + '" min="0" step="0.01" />', false, true);
+  h += fi('Commbox Hourly Rate (' + sym + ')', '<input type="number" id="f_commboxHourlyRate" value="' + esc(o['Commbox Hourly Rate']||'') + '" min="0" step="0.01" onchange="onProjChange()" />', isSupport, !isSupport);
 
   h += '<div class="tb"><div class="tb-row"><span class="tl">Total Amount (NIS)</span><span class="tv" id="f_total">\u20AA0.00</span></div>';
   h += '<div class="tc" id="f_conv"></div></div>';
@@ -334,11 +344,30 @@ function buildCard(o, rowIndex, orgs, acts) {
   return h;
 }
 
+// ── Project change — update Commbox Hourly Rate required marker ──
+function onProjChange() {
+  var projEl = document.getElementById('f_project');
+  var hrEl   = document.getElementById('f_commboxHourlyRate');
+  if (!projEl || !hrEl) return;
+  var isSupport = projEl.value.trim().toLowerCase() === 'support';
+  // Update the label's req/opt marker dynamically
+  var fi = hrEl.closest ? hrEl.closest('.fi') : hrEl.parentElement;
+  if (fi) {
+    var req = fi.querySelector('.req');
+    var opt = fi.querySelector('.opt');
+    if (req) req.style.display = isSupport ? 'inline' : 'none';
+    if (opt) opt.style.display = isSupport ? 'none'   : 'inline';
+  }
+  if (!isSupport) hrEl.classList.remove('ef');
+}
+
 // ── Billing type toggle ───────────────────────────────────────
 function onBtChange() {
   var bt = document.getElementById('f_billing').value;
   var rp = document.getElementById('f_recPeriodRow');
   if (rp) rp.style.display = (bt === 'Recurring') ? 'block' : 'none';
+  var sd = document.getElementById('f_startDateRow');
+  if (sd) sd.style.display = (bt === 'Recurring') ? 'block' : 'none';
   calcTotal();
 }
 
@@ -386,6 +415,12 @@ function doSave() {
   if (!org)     err('f_org');
   if (!project) err('f_project');
   if (!billing) err('f_billing');
+
+  // Commbox Hourly Rate required when project = Support
+  var isSupport = project.trim().toLowerCase() === 'support';
+  var hrEl = document.getElementById('f_commboxHourlyRate');
+  if (isSupport && hrEl && !parseFloat(hrEl.value)) err('f_commboxHourlyRate');
+
   if (!ok) { st.innerText = 'Please fill in all required fields.'; st.className = 'cst err'; return; }
 
   st.innerText = 'Saving\u2026'; st.className = 'cst';
@@ -419,8 +454,10 @@ function doSave() {
       pricePerHour:    document.getElementById('f_pph').value,
       milestones:      document.getElementById('f_milestones').value.trim(),
       renewalDate:     document.getElementById('f_renewal').value,
-      commboxARR:      document.getElementById('f_commboxARR').value,
+      commboxARR:           document.getElementById('f_commboxARR').value,
+      commboxHourlyRate:    (document.getElementById('f_commboxHourlyRate') || {value:''}).value,
       recurringPeriod: recPeriodEl ? recPeriodEl.value : '',
+      startDate:       (document.getElementById('f_startDate') || {value:''}).value,
       currency:        _curCur,
       exchangeRate:    _curCur === 'USD' ? _curRate : 1
     });

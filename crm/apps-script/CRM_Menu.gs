@@ -6,9 +6,7 @@
 
 function onOpen() {
   const ui          = SpreadsheetApp.getUi();
-  const currentUser = Session.getActiveUser().getEmail().toLowerCase();
-  const isAdmin     = SHEET_EDITORS.map(function(e) { return e.toLowerCase(); })
-                        .indexOf(currentUser) !== -1;
+  const isAdmin = isCurrentUserAdmin_();
 
   ui.createMenu("🔍 CRM")
     .addItem("Setup / Reset Dashboard", "setupCRM")
@@ -24,8 +22,12 @@ function onOpen() {
 
   if (isAdmin) {
     ui.createMenu("⚙️ CRM Admin")
-      .addItem("🔒 Protect Data Sheets", "protectDataSheets")
-      .addItem("🔓 Remove Protection",   "unprotectDataSheets")
+      .addItem("🔧 CRM Settings",          "openCRMSettingsDialog")
+      .addSeparator()
+      .addItem("🔒 Protect Data Sheets",   "protectDataSheets")
+      .addItem("🔓 Remove Protection",     "unprotectDataSheets")
+      .addSeparator()
+      .addItem("📊 Monthly Billing Report","openMonthlyReportDialog")
       .addToUi();
   }
 

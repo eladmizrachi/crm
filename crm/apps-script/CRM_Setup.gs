@@ -2,17 +2,8 @@
 // CRM_Setup.gs — Sheet Builders & Utilities
 // ============================================================
 
-// ── NOTIFICATION SETTINGS ──────────────────────────────────
-// Always included in every notification (comma-separated).
-const NOTIFICATION_ALWAYS_TO = "elad@teamiff.com,anita@teamiff.com,gefen@teamiff.com";
-
-// ── SHEET PROTECTION SETTINGS ──────────────────────────────
-// Users who can directly edit the protected data sheets.
-// Everyone else must use the CRM dialogs (which always work via the script owner).
-const SHEET_EDITORS = [
-  "elad@teamiff.com",
-  "david@teamiff.com",
-];
+// ── SETTINGS are now managed via CRM Admin → CRM Settings dialog ──
+// Defaults are defined in CRM_Config.gs → CONFIG_DEFAULTS_
 
 // Derives manager email from their name: "David Morali" → "david@teamiff.com"
 function managerNameToEmail(managerName) {
@@ -41,8 +32,13 @@ function getManagerNameForOrg(orgName) {
 }
 
 // Builds the final recipient list: manager email + always-recipients, deduped.
+// When send_email_enabled is false, returns only the test email.
 function buildToList(managerEmail) {
-  const parts = NOTIFICATION_ALWAYS_TO.split(',').map(function(e){ return e.trim(); });
+  if (getCRMSetting_('send_email_enabled') === 'false') {
+    return getCRMSetting_('test_email_recipient');
+  }
+  const parts = getCRMSetting_('notification_always_to')
+    .split(',').map(function(e){ return e.trim(); }).filter(Boolean);
   if (managerEmail && parts.indexOf(managerEmail) === -1) parts.unshift(managerEmail);
   return parts.join(',');
 }
@@ -71,15 +67,16 @@ function setupCRM() {
 
 
 // ── PROTECT DATA SHEETS ────────────────────────────────────
-// Restricts direct editing of Customers, Contacts, and Purchase Orders
-// to the users listed in SHEET_EDITORS.
-// CRM dialogs continue to work for everyone — script runs as owner.
+// Uses warning-only protection: users see a warning when editing directly in Sheets,
+// but CRM dialogs (which run as the current user via google.script.run) are never blocked.
+// Strict editor-list protection would prevent non-admin users from using the CRM dialogs.
 function protectDataSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetsToProtect = [
-    SRC.CUSTOMERS,  // "Customers"
-    SRC.CONTACTS,   // "Contacts "
-    SRC.ORDERS,     // "Purchase Orders"
+    SRC.CUSTOMERS,      // "Customers"
+    SRC.CONTACTS,       // "Contacts "
+    SRC.ORDERS,         // "Purchase Orders"
+    BILLING_SHEET_NAME, // "Billing"
   ];
 
   const results = [];
@@ -88,27 +85,25 @@ function protectDataSheets() {
     const sh = ss.getSheetByName(sheetName);
     if (!sh) { results.push('⚠️ Sheet not found: ' + sheetName); return; }
 
-    // Remove any existing protections on this sheet
-    sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(function(p) {
-      p.remove();
-    });
+    // Remove any existing protections
+    sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(function(p) { p.remove(); });
 
-    // Add new protection
+    // Warning-only: warns on direct UI edits, never blocks scripts
     const protection = sh.protect();
-    protection.setDescription('CRM protected — edit via CRM dialogs only');
+    protection.setDescription('CRM protected — use CRM dialogs to make changes');
+    protection.setWarningOnly(true);
 
-    // Remove all editors, then add only the allowed ones
-    protection.removeEditors(protection.getEditors());
-    protection.addEditors(SHEET_EDITORS);
+    // Hide from regular users
+    sh.hideSheet();
 
-    results.push('✅ Protected: ' + sheetName.trim());
+    results.push('✅ Protected & hidden: ' + sheetName.trim());
   });
 
   SpreadsheetApp.getUi().alert(
     '🔒 Sheet Protection Applied\n\n' +
     results.join('\n') + '\n\n' +
-    'Direct editors: ' + SHEET_EDITORS.join(', ') + '\n\n' +
-    'All other users can still use CRM dialogs to add/update data.'
+    'Users will see a warning when trying to edit these sheets directly.\n' +
+    'All CRM dialogs remain fully functional for every user.'
   );
 }
 
@@ -116,14 +111,15 @@ function protectDataSheets() {
 // ── REMOVE PROTECTION (if needed) ──────────────────────────
 function unprotectDataSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetsToUnprotect = [SRC.CUSTOMERS, SRC.CONTACTS, SRC.ORDERS];
+  const sheetsToUnprotect = [SRC.CUSTOMERS, SRC.CONTACTS, SRC.ORDERS, BILLING_SHEET_NAME];
   const results = [];
 
   sheetsToUnprotect.forEach(function(sheetName) {
     const sh = ss.getSheetByName(sheetName);
     if (!sh) return;
     sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(function(p) { p.remove(); });
-    results.push('🔓 Unprotected: ' + sheetName.trim());
+    try { sh.showSheet(); } catch(e) {}
+    results.push('🔓 Unprotected & visible: ' + sheetName.trim());
   });
 
   SpreadsheetApp.getUi().alert(results.join('\n') || 'No protections found.');

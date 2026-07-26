@@ -24,14 +24,16 @@ function searchPurchaseOrders(mode, term) {
         return h.toLowerCase().replace(/\s+/g, '') === name;
       });
     }
-    const iOrg   = col('organization');
-    const iCust  = col('customer');
-    const iPO    = col('ponumber');
-    const iProj  = col('project');
-    const iDate  = col('podate');
-    const iTotal = col('totalamount');
-    const iBT    = col('billingtype');
-    const iCur   = col('currency');
+    const iOrg     = col('organization');
+    const iCust    = col('customer');
+    const iPO      = col('ponumber');
+    const iProj    = col('project');
+    const iDate    = col('podate');
+    const iTotal   = col('totalamount');
+    const iBT      = col('billingtype');
+    const iCur     = col('currency');
+    // Support both "Renwal Date" (typo) and "Renewal Date" (correct spelling)
+    const iRenewal = col('renewaldate') !== -1 ? col('renewaldate') : col('renwaldate');
 
     function fmtDate(v) {
       if (v instanceof Date) {
@@ -58,9 +60,10 @@ function searchPurchaseOrders(mode, term) {
           customer:     String(row[iCust] || ''),
           project:      String(row[iProj] || ''),
           poDate:       fmtDate(row[iDate]),
-          totalAmount:  String(row[iTotal]|| ''),
-          billingType:  String(row[iBT]   || ''),
-          currency:     String(row[iCur]  || 'NIS'),
+          totalAmount:  String(row[iTotal]  || ''),
+          billingType:  String(row[iBT]     || ''),
+          currency:     String(row[iCur]    || 'NIS'),
+          renewalDate:  iRenewal !== -1 ? fmtDate(row[iRenewal]) : '',
         });
       }
     });
@@ -263,7 +266,7 @@ function go() {
 function renderTable(rows) {
   var h = '<table class="tbl">';
   h += '<thead><tr>';
-  h += '<th>PO #</th><th>Organization</th><th>Project</th><th>Date</th><th>Type</th><th style="text-align:right">Total</th>';
+  h += '<th>PO #</th><th>Organization</th><th>Project</th><th>Date</th><th>Renewal Date</th><th>Type</th><th style="text-align:right">Total</th>';
   h += '</tr></thead><tbody>';
 
   rows.forEach(function(m) {
@@ -272,6 +275,7 @@ function renderTable(rows) {
     h += '<td>' + esc(m.organization) + (m.customer && m.customer !== m.organization ? '<br><span style="color:#888;font-size:11px">' + esc(m.customer) + '</span>' : '') + '</td>';
     h += '<td>' + esc(m.project) + '</td>';
     h += '<td>' + esc(m.poDate) + '</td>';
+    h += '<td style="color:' + (m.renewalDate ? '#c62828' : '#aaa') + ';font-weight:' + (m.renewalDate ? '600' : '400') + '">' + esc(m.renewalDate || '\u2014') + '</td>';
     h += '<td class="bt"><span class="badge">' + esc(m.billingType || '\u2014') + '</span></td>';
     var amtStr = fmtNIS(m.totalAmount);
     h += '<td class="amt">' + (amtStr ? esc(amtStr) : '\u2014') + (m.currency === 'USD' ? ' <span class="badge usd">USD</span>' : '') + '</td>';

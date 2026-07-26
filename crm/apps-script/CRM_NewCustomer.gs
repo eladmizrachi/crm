@@ -36,6 +36,13 @@ function openNewCustomerDialog() {
   const codes      = getCodeTableValues();
   const poActivities = getPOActivities(); // from CRM_NewPurchaseOrder.gs
 
+  const giResult   = getGreenInvoiceClients();
+  const giClients  = giResult.clients || [];
+  const giError    = giResult.ok ? '' : (giResult.error || 'Could not load billing customers');
+  function buildGIOptions(clients) {
+    return clients.map(c => `<option value="${escapeHtml(c.id)}" data-pt="${escapeHtml(c.paymentTerms || '')}">${escapeHtml(c.name)}</option>`).join('');
+  }
+
   function buildOptions(arr) {
     return arr.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
   }
@@ -100,7 +107,8 @@ function openNewCustomerDialog() {
         }
         .billing-hint.hourly    { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
         .billing-hint.fixed     { background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; }
-        .billing-hint.recurring { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+        .billing-hint.recurring  { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+        .billing-hint.milestones { background: #e8f5e9; color: #2e7d32; border: 1px solid #81c784; }
 
         /* Currency selector */
         .currency-row { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -341,6 +349,12 @@ function openNewCustomerDialog() {
           <input type="date" id="renewalDate" />
         </div>
 
+        <!-- Start Date — shown for Recurring billing -->
+        <div class="field" id="fieldStartDate" style="display:none">
+          <label>Start Date <span class="req">*</span></label>
+          <input type="date" id="startDate" />
+        </div>
+
         <div class="field">
           <label>
             Commbox ARR (&#8362;)
@@ -356,6 +370,64 @@ function openNewCustomerDialog() {
             <span class="total-value" id="totalDisplay">&#8362;0.00</span>
           </div>
           <div id="totalConversion" style="font-size:11px; color:#5c6bc0; display:none;"></div>
+        </div>
+
+        <!-- Billing Records -->
+        <div class="section-title">Billing Records <span class="req">*</span></div>
+        ${giError ? '<div style="font-size:11px;color:#c62828;margin-bottom:6px;">&#9888; ' + escapeHtml(giError) + '</div>' : ''}
+        <div class="field">
+          <label>Paying Customer (GreenInvoice) <span class="req">*</span></label>
+          <select id="billPayingCustomer" onchange="onBillCustomerChange()">
+            <option value="">&#8212; Select &#8212;</option>
+            ${buildGIOptions(giClients)}
+          </select>
+        </div>
+        <div class="field" id="fieldPaymentTerms" style="display:none">
+          <label>Payment Terms <span class="opt">(days)</span></label>
+          <input type="number" id="billPaymentTerms" placeholder="e.g. 30" min="0" />
+        </div>
+        <div class="row2" id="fieldBillingExtras" style="display:none">
+          <div class="field">
+            <label>Hours report required <span class="req">*</span></label>
+            <select id="billHoursReport">
+              <option value="">&#8212; Select &#8212;</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Initiate invoice type <span class="req">*</span></label>
+            <select id="billInvoiceType">
+              <option value="">&#8212; Select &#8212;</option>
+              <option value="Tax invoice">Tax invoice</option>
+              <option value="Proforma invoice">Proforma invoice</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" id="fieldBillingPeriod" style="display:none">
+          <label>Billing Period <span class="req">*</span></label>
+          <select id="billPeriod">
+            <option value="Monthly">Monthly</option>
+            <option value="Quarterly">Quarterly (×3 per record)</option>
+            <option value="Yearly">Yearly (×12 per record)</option>
+          </select>
+        </div>
+        <div class="field" id="fieldMilestonesCheckbox" style="display:none">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="isMilestones" onchange="onMilestonesToggle()" style="width:auto;margin:0;accent-color:#1a237e" />
+            Milestones billing
+          </label>
+        </div>
+        <div class="field" id="fieldBillMonth" style="display:none">
+          <label>Billing Month <span class="req">*</span></label>
+          <input type="month" id="billMonth" />
+        </div>
+        <div id="fieldMilestoneSection" style="display:none">
+          <div class="field">
+            <label>Number of Milestones <span class="req">*</span></label>
+            <input type="number" id="milestoneCount" min="1" max="20" placeholder="e.g. 3" oninput="onMilestoneCountChange()" />
+          </div>
+          <div id="milestoneRows"></div>
         </div>
       </div><!-- /poSection -->
 
@@ -461,6 +533,7 @@ function openNewCustomerDialog() {
           document.getElementById('fieldRecurringPeriod').style.display = 'none';
           document.getElementById('recurringPeriod').selectedIndex = 0;
           document.getElementById('recurringPeriod').classList.remove('error');
+          if (bt !== 'Recurring') document.getElementById('billPeriod').selectedIndex = 0;
 
           if (bt === 'Hourly') {
             document.getElementById('reqHours').style.display        = 'inline';
@@ -479,10 +552,14 @@ function openNewCustomerDialog() {
             document.getElementById('optRecurring').style.display = 'none';
             document.getElementById('fieldRecurringPeriod').style.display = 'block';
             hint.className = 'billing-hint recurring'; hint.style.display = 'block';
-            hint.innerText = 'Recurring billing: Recurring Amount, Period and Renewal Date are required.';
+            hint.innerText = 'Recurring billing: Recurring Amount, Period, Start Date and Renewal Date are required.';
           }
 
+          var sdRow = document.getElementById('fieldStartDate');
+          if (sdRow) sdRow.style.display = (bt === 'Recurring') ? 'block' : 'none';
+
           updateRenewalRequired();
+          updateBillingFields();
           calcTotal();
         }
 
@@ -532,11 +609,74 @@ function openNewCustomerDialog() {
         function clearErrors() {
           ['orgName','industry','activity','manager','firstName','lastName','contactEmail',
            'projectName','project','poNumber','billingType','amount','recurringAmount','recurringPeriod',
-           'hours','pricePerHour','renewalDate','commboxARR']
+           'hours','pricePerHour','startDate','renewalDate','commboxARR',
+           'billPayingCustomer','billPaymentTerms','billHoursReport','billInvoiceType','billMonth','milestoneCount']
             .forEach(function(id) {
               var el = document.getElementById(id);
               if (el) el.classList.remove('error');
             });
+        }
+
+        // ── Billing handlers ─────────────────────────────────
+        function onBillCustomerChange() {
+          var sel = document.getElementById('billPayingCustomer');
+          var pt  = (sel && sel.selectedIndex > 0)
+            ? (sel.options[sel.selectedIndex].getAttribute('data-pt') || '')
+            : '';
+          var ptEl = document.getElementById('billPaymentTerms');
+          if (ptEl) ptEl.value = pt;
+          updateBillingFields();
+        }
+
+        function updateBillingFields() {
+          var bt = document.getElementById('billingType').value;
+          var hasCustomer = !!document.getElementById('billPayingCustomer').value;
+          var isHourlyOrFixed = (bt === 'Fixed Project' || bt === 'Hourly');
+          var isMsCb = document.getElementById('isMilestones');
+          var isMilestones = hasCustomer && isHourlyOrFixed && isMsCb && isMsCb.checked;
+
+          document.getElementById('fieldPaymentTerms').style.display =
+            hasCustomer ? 'block' : 'none';
+          document.getElementById('fieldBillingExtras').style.display =
+            hasCustomer ? 'flex' : 'none';
+          document.getElementById('fieldBillingPeriod').style.display =
+            (hasCustomer && bt === 'Recurring') ? 'block' : 'none';
+          document.getElementById('fieldMilestonesCheckbox').style.display =
+            (hasCustomer && isHourlyOrFixed) ? 'block' : 'none';
+          document.getElementById('fieldBillMonth').style.display =
+            (hasCustomer && isHourlyOrFixed && !isMilestones) ? 'block' : 'none';
+          document.getElementById('fieldMilestoneSection').style.display =
+            isMilestones ? 'block' : 'none';
+
+          if (!isMilestones) {
+            var mc = document.getElementById('milestoneCount');
+            if (mc) mc.value = '';
+            document.getElementById('milestoneRows').innerHTML = '';
+          }
+          if (!hasCustomer || !isHourlyOrFixed) {
+            if (isMsCb) isMsCb.checked = false;
+          }
+        }
+
+        function onMilestonesToggle() { updateBillingFields(); }
+
+        function onMilestoneCountChange() {
+          var n = parseInt(document.getElementById('milestoneCount').value) || 0;
+          var html = '';
+          for (var i = 1; i <= n; i++) html += buildMilestoneRow(i);
+          document.getElementById('milestoneRows').innerHTML = html;
+        }
+
+        function buildMilestoneRow(i) {
+          return '<div style="border:1px solid #c5cae9;border-radius:6px;padding:10px;margin-bottom:8px;background:#f8f9ff">' +
+            '<div style="font-size:11px;font-weight:700;color:#5c6bc0;margin-bottom:6px">Milestone ' + i + '</div>' +
+            '<div class="row2">' +
+              '<div class="field"><label>Name <span class="req">*</span></label><input type="text" id="msName_' + i + '" /></div>' +
+              '<div class="field"><label>Amount (&#8362;) <span class="req">*</span></label><input type="number" id="msAmount_' + i + '" min="0" step="0.01" /></div>' +
+            '</div>' +
+            '<div class="field"><label>Description <span class="opt">(optional)</span></label><input type="text" id="msDesc_' + i + '" /></div>' +
+            '<div class="field"><label>Billing Month <span class="req">*</span></label><input type="month" id="msMonth_' + i + '" /></div>' +
+          '</div>';
         }
 
         function doSave() {
@@ -570,6 +710,10 @@ function openNewCustomerDialog() {
               proposalLink = '', amount = 0, recurringAmount = 0, recurringPeriod = 0,
               hours = 0, pricePerHour = 0, milestones = '', renewalDate = '', commboxARR = 0,
               total = 0, currency = 'NIS', exchangeRate = 1;
+          // Billing fields
+          var startDate = '', billPayingCustomerId = '', billPayingCustomer = '',
+              billMonth = '', billPaymentTerms = '', billHoursReport = '', billInvoiceType = '',
+              billPeriod = 'Monthly', isMilestones = false, billMilestones = [];
 
           if (!skipPO) {
             projectName     = document.getElementById('projectName').value.trim();
@@ -607,6 +751,52 @@ function openNewCustomerDialog() {
             } else if (billingType === 'Recurring') {
               if (!recurringAmount) { document.getElementById('recurringAmount').classList.add('error'); valid = false; }
               if (!recurringPeriod) { document.getElementById('recurringPeriod').classList.add('error'); valid = false; }
+            }
+
+            // Billing fields (required)
+            var billSel = document.getElementById('billPayingCustomer');
+            billPayingCustomerId = billSel ? billSel.value : '';
+            billPayingCustomer   = (billSel && billSel.selectedIndex > 0) ? billSel.options[billSel.selectedIndex].text : '';
+            startDate        = (document.getElementById('startDate')        || {value:''}).value;
+            billMonth        = (document.getElementById('billMonth')        || {value:''}).value;
+            billPaymentTerms = (document.getElementById('billPaymentTerms') || {value:''}).value.trim();
+            billHoursReport  = (document.getElementById('billHoursReport')  || {value:''}).value;
+            billInvoiceType  = (document.getElementById('billInvoiceType')  || {value:''}).value;
+            billPeriod       = (document.getElementById('billPeriod')       || {value:'Monthly'}).value || 'Monthly';
+            var isMsCb = document.getElementById('isMilestones');
+            isMilestones   = !!(isMsCb && isMsCb.checked);
+            billMilestones = [];
+
+            if (!billPayingCustomerId) {
+              document.getElementById('billPayingCustomer').classList.add('error'); valid = false;
+            }
+            if (!billHoursReport) {
+              document.getElementById('billHoursReport').classList.add('error'); valid = false;
+            }
+            if (!billInvoiceType) {
+              document.getElementById('billInvoiceType').classList.add('error'); valid = false;
+            }
+            if (billPayingCustomerId) {
+              if (billingType === 'Recurring' && !startDate) {
+                document.getElementById('startDate').classList.add('error'); valid = false;
+              }
+              if ((billingType === 'Fixed Project' || billingType === 'Hourly') && !isMilestones && !billMonth) {
+                document.getElementById('billMonth').classList.add('error'); valid = false;
+              }
+              if (isMilestones) {
+                var msCount = parseInt((document.getElementById('milestoneCount') || {value:'0'}).value) || 0;
+                if (!msCount) { document.getElementById('milestoneCount').classList.add('error'); valid = false; }
+                for (var mi = 1; mi <= msCount; mi++) {
+                  var msName  = (document.getElementById('msName_'   + mi) || {value:''}).value.trim();
+                  var msAmt   = parseFloat((document.getElementById('msAmount_' + mi) || {value:'0'}).value) || 0;
+                  var msDesc  = (document.getElementById('msDesc_'   + mi) || {value:''}).value.trim();
+                  var msMo    = (document.getElementById('msMonth_'  + mi) || {value:''}).value;
+                  if (!msName)  { var el = document.getElementById('msName_'   + mi); if (el) el.classList.add('error'); valid = false; }
+                  if (!msAmt)   { var el = document.getElementById('msAmount_' + mi); if (el) el.classList.add('error'); valid = false; }
+                  if (!msMo)    { var el = document.getElementById('msMonth_'  + mi); if (el) el.classList.add('error'); valid = false; }
+                  billMilestones.push({ name: msName, amount: msAmt, description: msDesc, month: msMo });
+                }
+              }
             }
           }
 
@@ -653,6 +843,28 @@ function openNewCustomerDialog() {
                 document.getElementById('totalDisplay').innerText = '\u20aa0.00';
                 document.getElementById('skipPO').checked = false;
                 document.getElementById('poSection').style.display = 'block';
+                // Reset billing section
+                var bpc = document.getElementById('billPayingCustomer');
+                if (bpc) bpc.selectedIndex = 0;
+                var ptEl = document.getElementById('billPaymentTerms');
+                if (ptEl) ptEl.value = '';
+                var hrEl = document.getElementById('billHoursReport');
+                if (hrEl) hrEl.selectedIndex = 0;
+                var itEl = document.getElementById('billInvoiceType');
+                if (itEl) itEl.selectedIndex = 0;
+                var bpEl = document.getElementById('billPeriod');
+                if (bpEl) bpEl.selectedIndex = 0;
+                var sdEl = document.getElementById('startDate');
+                if (sdEl) sdEl.value = '';
+                var bmEl = document.getElementById('billMonth');
+                if (bmEl) bmEl.value = '';
+                var msCbEl = document.getElementById('isMilestones');
+                if (msCbEl) msCbEl.checked = false;
+                var mcEl = document.getElementById('milestoneCount');
+                if (mcEl) mcEl.value = '';
+                var mrEl = document.getElementById('milestoneRows');
+                if (mrEl) mrEl.innerHTML = '';
+                updateBillingFields();
                 // Reset currency
                 currentCurrency = 'NIS'; currentRate = 1;
                 document.getElementById('btnNIS').className = 'currency-btn active-nis';
@@ -678,13 +890,19 @@ function openNewCustomerDialog() {
               hours: hours, pricePerHour: pricePerHour, milestones: milestones,
               renewalDate: renewalDate, commboxARR: commboxARR || '', totalAmount: total,
               currency: currency, exchangeRate: exchangeRate,
+              startDate: startDate, isMilestones: isMilestones,
+              billPayingCustomer: billPayingCustomer, billPayingCustomerId: billPayingCustomerId,
+              billMonth: billMonth, billMilestones: billMilestones,
+              billPaymentTerms: billPaymentTerms,
+              billHoursReport: billHoursReport, billInvoiceType: billInvoiceType,
+              billPeriod: billPeriod,
             });
         }
       </script>
     </body>
     </html>
   `)
-  .setWidth(500).setHeight(820).setTitle("New Customer");
+  .setWidth(500).setHeight(1000).setTitle("New Customer");
 
   SpreadsheetApp.getUi().showModalDialog(html, "New Customer");
 }
@@ -737,7 +955,7 @@ function saveNewCustomer(data) {
     }
 
     // Append to Purchase Orders (if not skipped)
-    var poSaved = false;
+    var poSaved = false, billingCount = 0, billingError = '';
     if (!data.skipPO && data.poNumber) {
       const poSheet = ss.getSheetByName("Purchase Orders");
       if (poSheet) {
@@ -784,7 +1002,46 @@ function saveNewCustomer(data) {
           data.exchangeRate    || 1,     // col 19 — Exchange Rate
           data.projectName     || "",    // col 20 — Project Name
         ]);
+
+        // Write Start Date to its column (user-added, any position)
+        if (data.startDate) {
+          const allHeaders = poSheet.getRange(1, 1, 1, poSheet.getLastColumn()).getValues()[0];
+          const sdIdx = allHeaders.findIndex(function(h) { return String(h).trim().toLowerCase() === 'start date'; });
+          if (sdIdx !== -1) {
+            const p = data.startDate.split('-');
+            poSheet.getRange(poSheet.getLastRow(), sdIdx + 1).setValue(
+              p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : data.startDate
+            );
+          }
+        }
+
         poSaved = true;
+
+        // Save billing records
+        if (data.billingType && data.billPayingCustomerId) {
+          const br = saveBillingRecords({
+            organization:        data.orgName,
+            poNumber:            data.poNumber         || '',
+            billingType:         data.billingType,
+            isMilestones:        data.isMilestones     || false,
+            billPayingCustomer:  data.billPayingCustomer,
+            billPayingCustomerId: data.billPayingCustomerId,
+            startDate:           data.startDate        || '',
+            billMonth:           data.billMonth        || '',
+            renewalDate:         data.renewalDate      || '',
+            recurringAmount:     data.recurringAmount  || 0,
+            totalAmount:         data.totalAmount      || 0,
+            amount:              data.amount           || 0,
+            billMilestones:      data.billMilestones   || [],
+            billPaymentTerms:    data.billPaymentTerms || '',
+            project:             data.project          || '',
+            billHoursReport:     data.billHoursReport  || '',
+            billInvoiceType:     data.billInvoiceType  || '',
+            billPeriod:          data.billPeriod       || 'Monthly',
+          });
+          billingCount = br.count || 0;
+          billingError = br.ok ? '' : (br.error || 'Unknown billing error');
+        }
       }
     }
 
@@ -828,11 +1085,12 @@ function saveNewCustomer(data) {
       emailError = mailErr.message;
     }
 
+    const billingMsg = billingCount > 0 ? ' ' + billingCount + ' billing record(s) added.' : '';
     const msg = poSaved
-      ? '"' + data.orgName + '" and PO #' + data.poNumber + ' saved successfully!'
+      ? '"' + data.orgName + '" and PO #' + data.poNumber + ' saved successfully!' + billingMsg
       : '"' + data.orgName + '" saved successfully!';
 
-    return { ok: true, msg: msg, emailSent: emailSent, emailError: emailError, emailRecipients: emailRecipients };
+    return { ok: true, msg: msg, emailSent: emailSent, emailError: emailError, emailRecipients: emailRecipients, billingError: billingError };
 
   } catch (e) {
     return { ok: false, msg: e.message };
