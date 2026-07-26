@@ -188,30 +188,56 @@ function buildBillingRows_(d) {
     const start = parseBillingDate_(d.startDate || d.billStartDate);
     const end   = parseBillingDate_(d.renewalDate);
     if (!start || !end) return rows;
+
     const baseAmount = parseFloat(d.recurringAmount) || 0;
     const period     = d.billPeriod || 'Monthly';
+    const step       = period === 'Quarterly' ? 3 : period === 'Yearly' ? 12 : 1;
 
-    let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    const startDay          = start.getDate();
+    const endDay            = end.getDate();
+    const lastDayOfEndMonth = daysInMonth_(end.getFullYear(), end.getMonth());
+
+    let cur     = new Date(start.getFullYear(), start.getMonth(), 1);
     const endMo = new Date(end.getFullYear(), end.getMonth(), 1);
+    let isFirst = true;
 
     while (cur <= endMo) {
-      const monthStr = billingMonthStr_(cur);
       const yr       = String(cur.getFullYear());
-      let rowAmount, billingDesc, step;
+      const monthStr = billingMonthStr_(cur);
 
-      if (period === 'Quarterly') {
-        rowAmount   = baseAmount * 3;
-        const qNum  = Math.floor(cur.getMonth() / 3) + 1;
-        billingDesc = project + ' - Q' + qNum + ' ' + yr;
-        step        = 3;
-      } else if (period === 'Yearly') {
-        rowAmount   = baseAmount * 12;
-        billingDesc = project + ' - ' + yr;
-        step        = 12;
-      } else {
-        rowAmount   = baseAmount;
+      // Is this the last billing period? (next period would start after the renewal month)
+      const nextStart = new Date(cur.getFullYear(), cur.getMonth() + step, 1);
+      const isLast    = nextStart > endMo;
+
+      let rowAmount, billingDesc;
+
+      if (period === 'Monthly') {
+        const dInMonth = daysInMonth_(cur.getFullYear(), cur.getMonth());
+        const fromDay  = (isFirst && startDay > 1) ? startDay : 1;
+        const toDay    = (isLast && endDay < lastDayOfEndMonth) ? endDay : dInMonth;
+        rowAmount   = Math.round((toDay - fromDay + 1) / dInMonth * baseAmount * 100) / 100;
         billingDesc = project + ' - ' + monthName_(cur) + ' ' + yr;
-        step        = 1;
+
+      } else {
+        // Quarterly / Yearly: sum up prorated months for each month in the period
+        rowAmount = 0;
+        for (var m = 0; m < step; m++) {
+          const mo = new Date(cur.getFullYear(), cur.getMonth() + m, 1);
+          if (mo > endMo) break; // don't bill beyond the renewal month
+          const dInMo   = daysInMonth_(mo.getFullYear(), mo.getMonth());
+          const fromDay = (isFirst && m === 0 && startDay > 1) ? startDay : 1;
+          const isEndMo = (mo.getFullYear() === end.getFullYear() && mo.getMonth() === end.getMonth());
+          const toDay   = (isLast && isEndMo && endDay < lastDayOfEndMonth) ? endDay : dInMo;
+          rowAmount += (toDay - fromDay + 1) / dInMo * baseAmount;
+        }
+        rowAmount = Math.round(rowAmount * 100) / 100;
+
+        if (period === 'Quarterly') {
+          const qNum  = Math.floor(cur.getMonth() / 3) + 1;
+          billingDesc = project + ' - Q' + qNum + ' ' + yr;
+        } else {
+          billingDesc = project + ' - ' + yr;
+        }
       }
 
       rows.push([yr, monthStr, org, 'recurring', customer, customerId,
@@ -219,6 +245,7 @@ function buildBillingRows_(d) {
         period, billingDesc]);
 
       cur.setMonth(cur.getMonth() + step);
+      isFirst = false;
     }
 
   } else {
@@ -234,7 +261,11 @@ function buildBillingRows_(d) {
 }
 
 
-// ── Month name helper ──────────────────────────────────────
+// ── Date / calendar helpers ────────────────────────────────
+
+function daysInMonth_(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
 
 function monthName_(date) {
   return ['January','February','March','April','May','June',
