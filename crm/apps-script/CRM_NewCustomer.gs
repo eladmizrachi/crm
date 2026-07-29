@@ -965,20 +965,27 @@ function saveNewCustomer(data) {
         const yyyy  = today.getFullYear();
         const dateStr = dd + "/" + mm + "/" + yyyy;
 
+        let startFormatted = "";
+        if (data.startDate) {
+          const parts = data.startDate.split("-");
+          if (parts.length === 3) startFormatted = parts[2] + "/" + parts[1] + "/" + parts[0];
+        }
         let renewalFormatted = "";
         if (data.renewalDate) {
           const parts = data.renewalDate.split("-");
           if (parts.length === 3) renewalFormatted = parts[2] + "/" + parts[1] + "/" + parts[0];
         }
 
-        // Ensure columns 14–20 have headers
+        // Ensure all column headers exist (cols 14–22)
         if (!poSheet.getRange(1, 14).getValue()) poSheet.getRange(1, 14).setValue("Billing Type");
-        if (!poSheet.getRange(1, 15).getValue()) poSheet.getRange(1, 15).setValue("Renwal Date");
-        if (!poSheet.getRange(1, 16).getValue()) poSheet.getRange(1, 16).setValue("Commbox ARR");
-        if (!poSheet.getRange(1, 17).getValue()) poSheet.getRange(1, 17).setValue("Recurring Period");
-        if (!poSheet.getRange(1, 18).getValue()) poSheet.getRange(1, 18).setValue("Currency");
-        if (!poSheet.getRange(1, 19).getValue()) poSheet.getRange(1, 19).setValue("Exchange Rate");
-        if (!poSheet.getRange(1, 20).getValue()) poSheet.getRange(1, 20).setValue("Project Name");
+        if (!poSheet.getRange(1, 15).getValue()) poSheet.getRange(1, 15).setValue("Start Date");
+        if (!poSheet.getRange(1, 16).getValue()) poSheet.getRange(1, 16).setValue("Renwal Date");
+        if (!poSheet.getRange(1, 17).getValue()) poSheet.getRange(1, 17).setValue("Commbox ARR");
+        if (!poSheet.getRange(1, 18).getValue()) poSheet.getRange(1, 18).setValue("Recurring Period");
+        if (!poSheet.getRange(1, 19).getValue()) poSheet.getRange(1, 19).setValue("Currency");
+        if (!poSheet.getRange(1, 20).getValue()) poSheet.getRange(1, 20).setValue("Exchange Rate");
+        if (!poSheet.getRange(1, 21).getValue()) poSheet.getRange(1, 21).setValue("Project Name");
+        if (!poSheet.getRange(1, 22).getValue()) poSheet.getRange(1, 22).setValue("Commbox Hourly Rate");
 
         poSheet.appendRow([
           dateStr,                       // col 1  — PO Date
@@ -995,25 +1002,15 @@ function saveNewCustomer(data) {
           data.poCustomer      || "",    // col 12 — Customer
           data.proposalLink    || "",    // col 13 — Proposal link
           data.billingType     || "",    // col 14 — Billing Type
-          renewalFormatted,              // col 15 — Renewal Date
-          data.commboxARR      || "",    // col 16 — Commbox ARR
-          data.recurringPeriod || "",    // col 17 — Recurring Period
-          data.currency        || "NIS", // col 18 — Currency
-          data.exchangeRate    || 1,     // col 19 — Exchange Rate
-          data.projectName     || "",    // col 20 — Project Name
+          startFormatted,                // col 15 — Start Date
+          renewalFormatted,              // col 16 — Renwal Date
+          data.commboxARR      || "",    // col 17 — Commbox ARR
+          data.recurringPeriod || "",    // col 18 — Recurring Period
+          data.currency        || "NIS", // col 19 — Currency
+          data.exchangeRate    || 1,     // col 20 — Exchange Rate
+          data.projectName     || "",    // col 21 — Project Name
+          data.commboxHourlyRate || "",  // col 22 — Commbox Hourly Rate
         ]);
-
-        // Write Start Date to its column (user-added, any position)
-        if (data.startDate) {
-          const allHeaders = poSheet.getRange(1, 1, 1, poSheet.getLastColumn()).getValues()[0];
-          const sdIdx = allHeaders.findIndex(function(h) { return String(h).trim().toLowerCase() === 'start date'; });
-          if (sdIdx !== -1) {
-            const p = data.startDate.split('-');
-            poSheet.getRange(poSheet.getLastRow(), sdIdx + 1).setValue(
-              p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : data.startDate
-            );
-          }
-        }
 
         poSaved = true;
 

@@ -929,60 +929,55 @@ function saveNewPurchaseOrder(data) {
     const yyyy    = today.getFullYear();
     const dateStr = dd + "/" + mm + "/" + yyyy;
 
-    // Format renewal date from yyyy-mm-dd to dd/mm/yyyy
+    // Format dates from yyyy-mm-dd to dd/mm/yyyy
+    let startFormatted = "";
+    if (data.startDate) {
+      const parts = data.startDate.split("-");
+      if (parts.length === 3) startFormatted = parts[2] + "/" + parts[1] + "/" + parts[0];
+    }
     let renewalFormatted = "";
     if (data.renewalDate) {
       const parts = data.renewalDate.split("-");
       if (parts.length === 3) renewalFormatted = parts[2] + "/" + parts[1] + "/" + parts[0];
     }
 
-    // Write headers into cols 14–17 if missing
+    // Ensure all column headers exist (cols 14–22)
     if (!poSheet.getRange(1, 14).getValue()) poSheet.getRange(1, 14).setValue("Billing Type");
-    if (!poSheet.getRange(1, 15).getValue()) poSheet.getRange(1, 15).setValue("Renwal Date");
-    if (!poSheet.getRange(1, 16).getValue()) poSheet.getRange(1, 16).setValue("Commbox ARR");
-    if (!poSheet.getRange(1, 17).getValue()) poSheet.getRange(1, 17).setValue("Recurring Period");
-    if (!poSheet.getRange(1, 18).getValue()) poSheet.getRange(1, 18).setValue("Currency");
-    if (!poSheet.getRange(1, 19).getValue()) poSheet.getRange(1, 19).setValue("Exchange Rate");
-    if (!poSheet.getRange(1, 20).getValue()) poSheet.getRange(1, 20).setValue("Project Name");
-    if (!poSheet.getRange(1, 21).getValue()) poSheet.getRange(1, 21).setValue("Commbox Hourly Rate");
+    if (!poSheet.getRange(1, 15).getValue()) poSheet.getRange(1, 15).setValue("Start Date");
+    if (!poSheet.getRange(1, 16).getValue()) poSheet.getRange(1, 16).setValue("Renwal Date");
+    if (!poSheet.getRange(1, 17).getValue()) poSheet.getRange(1, 17).setValue("Commbox ARR");
+    if (!poSheet.getRange(1, 18).getValue()) poSheet.getRange(1, 18).setValue("Recurring Period");
+    if (!poSheet.getRange(1, 19).getValue()) poSheet.getRange(1, 19).setValue("Currency");
+    if (!poSheet.getRange(1, 20).getValue()) poSheet.getRange(1, 20).setValue("Exchange Rate");
+    if (!poSheet.getRange(1, 21).getValue()) poSheet.getRange(1, 21).setValue("Project Name");
+    if (!poSheet.getRange(1, 22).getValue()) poSheet.getRange(1, 22).setValue("Commbox Hourly Rate");
 
-    // Build row — every key is the trimmed sheet header (trailing spaces handled by buildPORow)
     const newRow = [
-      dateStr,                      // col 1  — PO Date
-      data.organization,            // col 2  — Organization
-      data.project,                 // col 3  — Project
-      data.projectDescription,      // col 4  — Project description
-      data.poNumber,                // col 5  — PO number
-      data.amount          || "",   // col 6  — Amount
-      data.recurringAmount || "",   // col 7  — Recurring Amount
-      data.milestones,              // col 8  — Milestones
-      data.hours           || "",   // col 9  — Hours
-      data.pricePerHour    || "",   // col 10 — Price per hour
-      data.totalAmount     || "",   // col 11 — Total Amount
-      data.customer,                // col 12 — Customer
-      data.proposalLink    || "",   // col 13 — Proposal link
-      data.billingType     || "",   // col 14 — Billing Type
-      renewalFormatted,             // col 15 — Renwal Date
-      data.commboxARR      || "",   // col 16 — Commbox ARR
-      data.recurringPeriod || "",   // col 17 — Recurring Period
-      data.currency        || "NIS", // col 18 — Currency
-      data.exchangeRate    || 1,     // col 19 — Exchange Rate
-      data.projectName       || "",   // col 20 — Project Name
-      data.commboxHourlyRate || "",   // col 21 — Commbox Hourly Rate
+      dateStr,                       // col 1  — PO Date
+      data.organization,             // col 2  — Organization
+      data.project,                  // col 3  — Project
+      data.projectDescription,       // col 4  — Project description
+      data.poNumber,                 // col 5  — PO number
+      data.amount          || "",    // col 6  — Amount
+      data.recurringAmount || "",    // col 7  — Recurring Amount
+      data.milestones,               // col 8  — Milestones
+      data.hours           || "",    // col 9  — Hours
+      data.pricePerHour    || "",    // col 10 — Price per hour
+      data.totalAmount     || "",    // col 11 — Total Amount
+      data.customer,                 // col 12 — Customer
+      data.proposalLink    || "",    // col 13 — Proposal link
+      data.billingType     || "",    // col 14 — Billing Type
+      startFormatted,                // col 15 — Start Date
+      renewalFormatted,              // col 16 — Renwal Date
+      data.commboxARR      || "",    // col 17 — Commbox ARR
+      data.recurringPeriod || "",    // col 18 — Recurring Period
+      data.currency        || "NIS", // col 19 — Currency
+      data.exchangeRate    || 1,     // col 20 — Exchange Rate
+      data.projectName     || "",    // col 21 — Project Name
+      data.commboxHourlyRate || "",  // col 22 — Commbox Hourly Rate
     ];
 
     poSheet.appendRow(newRow);
-
-    // Write Start Date to its column (user-added at any position)
-    if (data.startDate) {
-      const allHeaders = poSheet.getRange(1, 1, 1, poSheet.getLastColumn()).getValues()[0];
-      const sdIdx = allHeaders.findIndex(function(h) { return String(h).trim().toLowerCase() === 'start date'; });
-      if (sdIdx !== -1) {
-        const p = data.startDate.split('-');
-        const sdFmt = p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : data.startDate;
-        poSheet.getRange(poSheet.getLastRow(), sdIdx + 1).setValue(sdFmt);
-      }
-    }
 
     // Auto-search the organization so the new PO appears immediately
     runSearch(data.organization);
