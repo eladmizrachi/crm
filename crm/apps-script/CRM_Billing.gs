@@ -197,15 +197,22 @@ function buildBillingRows_(d) {
     const endDay            = end.getDate();
     const lastDayOfEndMonth = daysInMonth_(end.getFullYear(), end.getMonth());
 
+    // Exact cycle: end+1 day falls on the same day-of-month as start.
+    // e.g. start=Jul 15, end=Jul 14 → end+1=Jul 15 → exactly 12 complete months.
+    // In this case every record is full amount; no proration for first or last period.
+    const dayAfterEnd  = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1);
+    const isExactCycle = dayAfterEnd.getDate() === startDay;
+
     let cur     = new Date(start.getFullYear(), start.getMonth(), 1);
     const endMo = new Date(end.getFullYear(), end.getMonth(), 1);
     let isFirst = true;
 
-    while (cur <= endMo) {
+    // For exact cycles the end month is the start of the next cycle, not a billing month.
+    while (isExactCycle ? cur < endMo : cur <= endMo) {
       const yr       = String(cur.getFullYear());
       const monthStr = billingMonthStr_(cur);
 
-      // Is this the last billing period? (next period would start after the renewal month)
+      // Is this the last billing period?
       const nextStart = new Date(cur.getFullYear(), cur.getMonth() + step, 1);
       const isLast    = nextStart > endMo;
 
@@ -213,26 +220,28 @@ function buildBillingRows_(d) {
 
       if (period === 'Monthly') {
         const dInMonth = daysInMonth_(cur.getFullYear(), cur.getMonth());
-        const fromDay  = (isFirst && startDay > 1) ? startDay : 1;
-        const toDay    = (isLast && endDay < lastDayOfEndMonth) ? endDay : dInMonth;
+        // Prorate only when NOT an exact cycle
+        const fromDay  = (!isExactCycle && isFirst && startDay > 1) ? startDay : 1;
+        const toDay    = (!isExactCycle && isLast && endDay < lastDayOfEndMonth) ? endDay : dInMonth;
         rowAmount   = Math.round((toDay - fromDay + 1) / dInMonth * baseAmount * 100) / 100;
         billingDesc = project + ' - ' + monthName_(cur) + ' ' + yr;
 
       } else {
-        // Quarterly / Yearly: sum up prorated months for each month in the period
+        // Quarterly / Yearly: sum up prorated months across the period
         rowAmount = 0;
         for (var m = 0; m < step; m++) {
           const mo = new Date(cur.getFullYear(), cur.getMonth() + m, 1);
-          if (mo > endMo) break; // don't bill beyond the renewal month
+          if (mo > endMo) break;
           const dInMo   = daysInMonth_(mo.getFullYear(), mo.getMonth());
-          const fromDay = (isFirst && m === 0 && startDay > 1) ? startDay : 1;
+          // Prorate only when NOT an exact cycle
+          const fromDay = (!isExactCycle && isFirst && m === 0 && startDay > 1) ? startDay : 1;
           const isEndMo = (mo.getFullYear() === end.getFullYear() && mo.getMonth() === end.getMonth());
-          const toDay   = (isLast && isEndMo && endDay < lastDayOfEndMonth) ? endDay : dInMo;
+          const toDay   = (!isExactCycle && isLast && isEndMo && endDay < lastDayOfEndMonth) ? endDay : dInMo;
           rowAmount += (toDay - fromDay + 1) / dInMo * baseAmount;
         }
         rowAmount = Math.round(rowAmount * 100) / 100;
 
-        // Period end = last month of this record, capped at renewal month
+        // Description: show month range, capped at renewal month
         const periodEndMo = new Date(cur.getFullYear(), cur.getMonth() + step - 1, 1);
         const capEnd = periodEndMo <= endMo ? periodEndMo : endMo;
         billingDesc = project + ' - ' + monthName_(cur) + ' ' + yr
