@@ -232,12 +232,11 @@ function buildBillingRows_(d) {
         }
         rowAmount = Math.round(rowAmount * 100) / 100;
 
-        if (period === 'Quarterly') {
-          const qNum  = Math.floor(cur.getMonth() / 3) + 1;
-          billingDesc = project + ' - Q' + qNum + ' ' + yr;
-        } else {
-          billingDesc = project + ' - ' + yr;
-        }
+        // Period end = last month of this record, capped at renewal month
+        const periodEndMo = new Date(cur.getFullYear(), cur.getMonth() + step - 1, 1);
+        const capEnd = periodEndMo <= endMo ? periodEndMo : endMo;
+        billingDesc = project + ' - ' + monthName_(cur) + ' ' + yr
+          + ' - ' + monthName_(capEnd) + ' ' + capEnd.getFullYear();
       }
 
       rows.push([yr, monthStr, org, 'recurring', customer, customerId,
