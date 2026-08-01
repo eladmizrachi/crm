@@ -301,7 +301,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
 
     const tableHeader =
       '<div class="table-wrap"><table><thead><tr>' +
-      '<th>PO #</th><th>#</th><th>Customer</th><th>Project type</th><th>Billing Type</th>' +
+      '<th>PO #</th><th>Customer</th><th>Project type</th><th>Billing Type</th>' +
       '<th>Billing period</th><th>Paying Customer</th><th>Payment terms</th><th>Amount (&#8362;)</th>' +
       '<th>Hours report</th><th>Invoice type</th>' +
       '<th>Milestone</th><th>Description</th><th>Billing description</th>' +
@@ -310,19 +310,18 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
     if (rows.length === 0) {
       document.getElementById('content').innerHTML =
         projSummary + tableHeader +
-        '<tr><td colspan="14" style="text-align:center;color:#9e9e9e;padding:30px">No billing records found for this period.</td></tr>' +
+        '<tr><td colspan="13" style="text-align:center;color:#9e9e9e;padding:30px">No billing records found for this period.</td></tr>' +
         '</tbody></table></div>';
       return;
     }
 
     // ── Main table grouped by project type ──────────────────
     let html = projSummary + tableHeader;
-    let globalIdx = 1;
 
     projectKeys.forEach(function(proj) {
       const g = byProject[proj];
       // Group header spanning all columns
-      html += '<tr class="group-header"><td colspan="14">' +
+      html += '<tr class="group-header"><td colspan="13">' +
         esc(proj) + ' &nbsp;·&nbsp; ' + g.rows.length + ' record' + (g.rows.length !== 1 ? 's' : '') +
         '</td></tr>';
 
@@ -331,7 +330,6 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
         const ptLabel = r.paymentTerms ? esc(r.paymentTerms) + ' days' : '';
         html += '<tr>' +
           '<td>' + esc(r.poNumber) + '</td>' +
-          '<td>' + globalIdx++ + '</td>' +
           '<td>' + esc(r.customer) + '</td>' +
           '<td>' + esc(r.project) + '</td>' +
           '<td class="type">' + badge + '</td>' +
@@ -349,7 +347,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
 
       // Subtotal row for this project group
       html += '<tr class="group-subtotal">' +
-        '<td colspan="8" style="text-align:right">Subtotal — ' + esc(proj) + ':</td>' +
+        '<td colspan="7" style="text-align:right">Subtotal — ' + esc(proj) + ':</td>' +
         '<td class="amount">&#8362; ' + fmt(g.total) + '</td>' +
         '<td colspan="5"></td>' +
         '</tr>';
