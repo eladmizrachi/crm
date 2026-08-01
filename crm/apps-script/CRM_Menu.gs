@@ -28,6 +28,7 @@ function onOpen() {
       .addItem("🔓 Remove Protection",     "unprotectDataSheets")
       .addSeparator()
       .addItem("📊 Monthly Billing Report","openMonthlyReportDialog")
+      .addItem("💰 Cashflow Report",        "openCashflowReportDialog")
       .addToUi();
   }
 
