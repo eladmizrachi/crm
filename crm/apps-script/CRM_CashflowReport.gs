@@ -69,7 +69,8 @@ function getCashflowData(fromYear, fromMonth, toYear, toMonth) {
 
       // Expected payment date: 1st of billing month + paymentTerms days
       var parts    = billingMonth.split('-');
-      var baseDate = new Date(+parts[0], +parts[1] - 1, 1);
+      // Use last day of billing month so July + 60d = Sep 29 → September
+      var baseDate = new Date(+parts[0], +parts[1], 0);
       baseDate.setDate(baseDate.getDate() + paymentTerms);
 
       var expYear  = baseDate.getFullYear();
