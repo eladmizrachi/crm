@@ -187,6 +187,38 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
   .empty { padding: 40px 20px; text-align: center; color: #9e9e9e; font-size: 14px; }
   .error-msg { padding: 16px 20px; color: #c62828; font-size: 13px; }
   .loading { padding: 40px 20px; text-align: center; color: #5c6bc0; font-size: 14px; }
+
+  /* Project-type summary section */
+  .proj-summary {
+    margin: 14px 20px 0;
+    background: #fff; border: 1px solid #c5cae9; border-radius: 8px; overflow: hidden;
+  }
+  .proj-summary-title {
+    background: #3949ab; color: #fff;
+    padding: 8px 14px; font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
+  }
+  .proj-summary-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .proj-summary-table th {
+    background: #e8eaf6; color: #3949ab;
+    padding: 8px 12px; text-align: left; font-weight: 700; border-bottom: 1px solid #c5cae9;
+  }
+  .proj-summary-table th:last-child { text-align: right; }
+  .proj-summary-table td { padding: 7px 12px; border-bottom: 1px solid #f0f0f0; }
+  .proj-summary-table td:last-child { text-align: right; font-weight: 600; color: #1a237e; }
+  .proj-summary-table tr:last-child td { border-bottom: none; background: #e8eaf6; font-weight: 700; }
+  .proj-summary-table tr:last-child td:last-child { color: #1a237e; }
+
+  /* Group rows in the main table */
+  tr.group-header td {
+    background: #3949ab; color: #fff;
+    font-weight: 700; font-size: 12px; padding: 7px 12px;
+    letter-spacing: 0.3px; border: none;
+  }
+  tr.group-subtotal td {
+    background: #e8eaf6; font-size: 12px; padding: 6px 12px;
+    border-top: 1px solid #c5cae9;
+  }
+  tr.group-subtotal td.amount { color: #1a237e; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -229,7 +261,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
     const rows = data.rows;
     const total = data.total;
 
-    // Summary bar
+    // ── Summary bar (by billing type) ──────────────────────
     const byType = {};
     rows.forEach(function(r) {
       byType[r.type] = (byType[r.type] || 0) + r.amount;
@@ -242,7 +274,33 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
     document.getElementById('summaryBar').innerHTML = chips;
     document.getElementById('summaryBar').style.display = 'flex';
 
-    const tableHeader = '<div class="table-wrap"><table><thead><tr>' +
+    // ── Group by project type ───────────────────────────────
+    const byProject = {};
+    rows.forEach(function(r) {
+      const proj = r.project || '(No project)';
+      if (!byProject[proj]) byProject[proj] = { rows: [], total: 0 };
+      byProject[proj].rows.push(r);
+      byProject[proj].total += r.amount;
+    });
+    const projectKeys = Object.keys(byProject).sort();
+
+    // ── Project-type summary table ──────────────────────────
+    let projSummary = '<div class="proj-summary">' +
+      '<div class="proj-summary-title">Summary by Project Type</div>' +
+      '<table class="proj-summary-table"><thead><tr>' +
+      '<th>Project Type</th><th>Records</th><th>Amount (&#8362;)</th>' +
+      '</tr></thead><tbody>';
+    projectKeys.forEach(function(proj) {
+      const g = byProject[proj];
+      projSummary += '<tr><td>' + esc(proj) + '</td><td>' + g.rows.length +
+        '</td><td>&#8362; ' + fmt(g.total) + '</td></tr>';
+    });
+    projSummary += '<tr><td>Total</td><td>' + rows.length +
+      '</td><td>&#8362; ' + fmt(total) + '</td></tr>';
+    projSummary += '</tbody></table></div>';
+
+    const tableHeader =
+      '<div class="table-wrap"><table><thead><tr>' +
       '<th>#</th><th>PO #</th><th>Customer</th><th>Project type</th><th>Billing Type</th>' +
       '<th>Billing period</th><th>Paying Customer</th><th>Payment terms</th><th>Amount (&#8362;)</th>' +
       '<th>Hours report</th><th>Invoice type</th>' +
@@ -251,30 +309,49 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
 
     if (rows.length === 0) {
       document.getElementById('content').innerHTML =
-        tableHeader + '<tr><td colspan="14" style="text-align:center;color:#9e9e9e;padding:30px">No billing records found for this period.</td></tr></tbody></table></div>';
+        projSummary + tableHeader +
+        '<tr><td colspan="14" style="text-align:center;color:#9e9e9e;padding:30px">No billing records found for this period.</td></tr>' +
+        '</tbody></table></div>';
       return;
     }
 
-    let html = tableHeader;
+    // ── Main table grouped by project type ──────────────────
+    let html = projSummary + tableHeader;
+    let globalIdx = 1;
 
-    rows.forEach(function(r, i) {
-      const badge = '<span class="badge badge-' + r.type + '">' + cap(r.type) + '</span>';
-      const ptLabel = r.paymentTerms ? esc(r.paymentTerms) + ' days' : '';
-      html += '<tr>' +
-        '<td>' + (i + 1) + '</td>' +
-        '<td>' + esc(r.poNumber) + '</td>' +
-        '<td>' + esc(r.customer) + '</td>' +
-        '<td>' + esc(r.project) + '</td>' +
-        '<td class="type">' + badge + '</td>' +
-        '<td>' + esc(r.billingPeriod) + '</td>' +
-        '<td>' + esc(r.paying) + '</td>' +
-        '<td>' + ptLabel + '</td>' +
-        '<td class="amount">&#8362; ' + fmt(r.amount) + '</td>' +
-        '<td>' + esc(r.hoursReport) + '</td>' +
-        '<td>' + esc(r.invoiceType) + '</td>' +
-        '<td>' + esc(r.msName) + '</td>' +
-        '<td>' + esc(r.msDesc) + '</td>' +
-        '<td>' + esc(r.billingDesc) + '</td>' +
+    projectKeys.forEach(function(proj) {
+      const g = byProject[proj];
+      // Group header spanning all columns
+      html += '<tr class="group-header"><td colspan="14">' +
+        esc(proj) + ' &nbsp;·&nbsp; ' + g.rows.length + ' record' + (g.rows.length !== 1 ? 's' : '') +
+        '</td></tr>';
+
+      g.rows.forEach(function(r) {
+        const badge = '<span class="badge badge-' + r.type + '">' + cap(r.type) + '</span>';
+        const ptLabel = r.paymentTerms ? esc(r.paymentTerms) + ' days' : '';
+        html += '<tr>' +
+          '<td>' + globalIdx++ + '</td>' +
+          '<td>' + esc(r.poNumber) + '</td>' +
+          '<td>' + esc(r.customer) + '</td>' +
+          '<td>' + esc(r.project) + '</td>' +
+          '<td class="type">' + badge + '</td>' +
+          '<td>' + esc(r.billingPeriod) + '</td>' +
+          '<td>' + esc(r.paying) + '</td>' +
+          '<td>' + ptLabel + '</td>' +
+          '<td class="amount">&#8362; ' + fmt(r.amount) + '</td>' +
+          '<td>' + esc(r.hoursReport) + '</td>' +
+          '<td>' + esc(r.invoiceType) + '</td>' +
+          '<td>' + esc(r.msName) + '</td>' +
+          '<td>' + esc(r.msDesc) + '</td>' +
+          '<td>' + esc(r.billingDesc) + '</td>' +
+          '</tr>';
+      });
+
+      // Subtotal row for this project group
+      html += '<tr class="group-subtotal">' +
+        '<td colspan="8" style="text-align:right">Subtotal — ' + esc(proj) + ':</td>' +
+        '<td class="amount">&#8362; ' + fmt(g.total) + '</td>' +
+        '<td colspan="5"></td>' +
         '</tr>';
     });
 
