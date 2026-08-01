@@ -301,7 +301,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
 
     const tableHeader =
       '<div class="table-wrap"><table><thead><tr>' +
-      '<th>#</th><th>PO #</th><th>Customer</th><th>Project type</th><th>Billing Type</th>' +
+      '<th>PO #</th><th>#</th><th>Customer</th><th>Project type</th><th>Billing Type</th>' +
       '<th>Billing period</th><th>Paying Customer</th><th>Payment terms</th><th>Amount (&#8362;)</th>' +
       '<th>Hours report</th><th>Invoice type</th>' +
       '<th>Milestone</th><th>Description</th><th>Billing description</th>' +
@@ -330,8 +330,8 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
         const badge = '<span class="badge badge-' + r.type + '">' + cap(r.type) + '</span>';
         const ptLabel = r.paymentTerms ? esc(r.paymentTerms) + ' days' : '';
         html += '<tr>' +
-          '<td>' + globalIdx++ + '</td>' +
           '<td>' + esc(r.poNumber) + '</td>' +
+          '<td>' + globalIdx++ + '</td>' +
           '<td>' + esc(r.customer) + '</td>' +
           '<td>' + esc(r.project) + '</td>' +
           '<td class="type">' + badge + '</td>' +
