@@ -43,22 +43,26 @@ function getMonthlyBillingRecords(year, month) {
     const data = sh.getDataRange().getValues();
     if (data.length < 2) return { ok: true, rows: [], total: 0 };
 
-    const hdrs      = data[0].map(function(h) { return String(h).trim(); });
-    const colYear   = hdrs.indexOf('Year');
-    const colMonth  = hdrs.indexOf('Month');
-    const colCust   = hdrs.indexOf('Customer');
-    const colType   = hdrs.indexOf('Billing Type');
-    const colPaying = hdrs.indexOf('Paying Customer');
-    const colAmt    = hdrs.indexOf('Amount');
-    const colMsName = hdrs.indexOf('Milestone name');
-    const colMsDesc = hdrs.indexOf('Milestone description');
-    const colPO          = hdrs.indexOf('PO Number');
-    const colPT          = hdrs.indexOf('Payment terms');
-    const colProj        = hdrs.indexOf('Project type');
-    const colHoursReport  = hdrs.indexOf('Hours report');
-    const colInvoiceType  = hdrs.indexOf('Initiate invoice type');
-    const colBillingPeriod = hdrs.indexOf('Billing period');
-    const colBillingDesc   = hdrs.indexOf('Billing description');
+    const hdrs = data[0].map(function(h) { return String(h).trim(); });
+    function findCol(name) {
+      const lc = name.toLowerCase();
+      return hdrs.findIndex(function(h) { return h.toLowerCase() === lc; });
+    }
+    const colYear          = findCol('Year');
+    const colMonth         = findCol('Month');
+    const colCust          = findCol('Customer');
+    const colType          = findCol('Billing Type');
+    const colPaying        = findCol('Paying Customer');
+    const colAmt           = findCol('Amount');
+    const colMsName        = findCol('Milestone name');
+    const colMsDesc        = findCol('Milestone description');
+    const colPO            = findCol('PO Number');
+    const colPT            = findCol('Payment terms');
+    const colProj          = findCol('Project type');
+    const colHoursReport   = findCol('Hours report');
+    const colInvoiceType   = findCol('Initiate invoice type');
+    const colBillingPeriod = findCol('Billing period');
+    const colBillingDesc   = findCol('Billing description');
 
     const targetMonth = String(year) + '-' + String(month).padStart(2, '0');
 
