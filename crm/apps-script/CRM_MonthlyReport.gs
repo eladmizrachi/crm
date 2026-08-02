@@ -312,7 +312,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
       '<div class="table-wrap"><table><thead><tr>' +
       '<th>PO #</th><th>Customer</th><th>Project type</th><th>Billing Type</th>' +
       '<th>Billing period</th><th>Paying Customer</th><th>Payment terms</th>' +
-      '<th>Price/hr</th><th>Hours</th><th>Amount (&#8362;)</th>' +
+      '<th>Price/hr</th><th>Hours</th><th>Amount (&#8362;)</th><th>% of Total</th>' +
       '<th>Hours report</th><th>Invoice type</th>' +
       '<th>Milestone</th><th>Description</th><th>Billing description</th>' +
       '</tr></thead><tbody>';
@@ -320,7 +320,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
     if (rows.length === 0) {
       document.getElementById('content').innerHTML =
         projSummary + tableHeader +
-        '<tr><td colspan="15" style="text-align:center;color:#9e9e9e;padding:30px">No billing records found for this period.</td></tr>' +
+        '<tr><td colspan="16" style="text-align:center;color:#9e9e9e;padding:30px">No billing records found for this period.</td></tr>' +
         '</tbody></table></div>';
       return;
     }
@@ -331,7 +331,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
     projectKeys.forEach(function(proj) {
       const g = byProject[proj];
       // Group header spanning all columns
-      html += '<tr class="group-header"><td colspan="15">' +
+      html += '<tr class="group-header"><td colspan="16">' +
         esc(proj) + ' &nbsp;·&nbsp; ' + g.rows.length + ' record' + (g.rows.length !== 1 ? 's' : '') +
         '</td></tr>';
 
@@ -349,6 +349,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
           '<td class="amount">' + (r.pricePerHour ? '&#8362; ' + fmt(r.pricePerHour) : '') + '</td>' +
           '<td>' + (r.numHours ? fmt(r.numHours) : '') + '</td>' +
           '<td class="amount">&#8362; ' + fmt(r.amount) + '</td>' +
+          '<td style="text-align:right;color:#5c6bc0;white-space:nowrap">' + (total > 0 ? (r.amount / total * 100).toFixed(1) + '%' : '') + '</td>' +
           '<td>' + esc(r.hoursReport) + '</td>' +
           '<td>' + esc(r.invoiceType) + '</td>' +
           '<td>' + esc(r.msName) + '</td>' +
@@ -362,6 +363,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
         '<td colspan="7" style="text-align:right">Subtotal — ' + esc(proj) + ':</td>' +
         '<td colspan="2"></td>' +
         '<td class="amount">&#8362; ' + fmt(g.total) + '</td>' +
+        '<td style="text-align:right;color:#5c6bc0">' + (total > 0 ? (g.total / total * 100).toFixed(1) + '%' : '') + '</td>' +
         '<td colspan="5"></td>' +
         '</tr>';
     });
