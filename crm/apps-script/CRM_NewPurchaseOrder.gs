@@ -292,7 +292,7 @@ function openNewPurchaseOrderDialog(selectedOrg) {
             <span class="req-dynamic" id="reqHours">*</span>
             <span class="opt" id="optHours">(optional)</span>
           </label>
-          <input type="number" id="hours" placeholder="0" min="0" step="0.5" oninput="calcTotal()" />
+          <input type="number" id="hours" placeholder="0" min="0" step="0.5" oninput="calcTotal(); recalcAllMs();" />
         </div>
         <div class="field" id="fieldPricePerHour">
           <label>
@@ -300,7 +300,7 @@ function openNewPurchaseOrderDialog(selectedOrg) {
             <span class="req-dynamic" id="reqPricePerHour">*</span>
             <span class="opt" id="optPricePerHour">(optional)</span>
           </label>
-          <input type="number" id="pricePerHour" placeholder="0" min="0" step="0.01" oninput="calcTotal()" />
+          <input type="number" id="pricePerHour" placeholder="0" min="0" step="0.01" oninput="calcTotal(); recalcAllMs();" />
         </div>
       </div>
 
@@ -691,15 +691,51 @@ function openNewPurchaseOrderDialog(selectedOrg) {
         }
 
         function buildMilestoneRow(i) {
+          var bt = document.getElementById('billingType').value;
+          var isHourly = (bt === 'Hourly');
+          var hoursField = isHourly
+            ? '<div class="field"><label>Hours (auto)</label>' +
+                '<input type="text" id="msHours_' + i + '" readonly ' +
+                'style="background:#f0f4ff;color:#1a237e;font-weight:600" /></div>'
+            : '<div class="field"></div>';
           return '<div style="border:1px solid #c5cae9;border-radius:6px;padding:10px;margin-bottom:8px;background:#f8f9ff">' +
             '<div style="font-size:11px;font-weight:700;color:#5c6bc0;margin-bottom:6px">Milestone ' + i + '</div>' +
             '<div class="row2">' +
               '<div class="field"><label>Name <span class="req">*</span></label><input type="text" id="msName_' + i + '" /></div>' +
-              '<div class="field"><label>Amount (&#8362;) <span class="req">*</span></label><input type="number" id="msAmount_' + i + '" min="0" step="0.01" /></div>' +
+              '<div class="field"><label>% of total <span class="req">*</span></label>' +
+                '<input type="number" id="msPct_' + i + '" min="0.01" max="100" step="0.01" placeholder="e.g. 25" ' +
+                'oninput="calcMs(' + i + ')" /></div>' +
+            '</div>' +
+            '<div class="row2">' +
+              '<div class="field"><label>Amount &#8362; (auto)</label>' +
+                '<input type="text" id="msAmount_' + i + '" readonly ' +
+                'style="background:#f0f4ff;color:#1a237e;font-weight:600" /></div>' +
+              hoursField +
             '</div>' +
             '<div class="field"><label>Description <span class="opt">(optional)</span></label><input type="text" id="msDesc_' + i + '" /></div>' +
             '<div class="field"><label>Billing Month <span class="req">*</span></label><input type="month" id="msMonth_' + i + '" /></div>' +
           '</div>';
+        }
+
+        function calcMs(i) {
+          var pct   = parseFloat((document.getElementById('msPct_' + i) || {value:'0'}).value) || 0;
+          var total = calcTotal();
+          var amt   = Math.round(total * pct / 100 * 100) / 100;
+          var amtEl = document.getElementById('msAmount_' + i);
+          if (amtEl) amtEl.value = amt > 0 ? amt.toFixed(2) : '';
+          var hrsEl = document.getElementById('msHours_' + i);
+          if (hrsEl) {
+            var hrs   = parseFloat((document.getElementById('hours') || {value:'0'}).value) || 0;
+            var msHrs = Math.round(hrs * pct / 100 * 100) / 100;
+            hrsEl.value = msHrs > 0 ? msHrs.toFixed(2) : '';
+          }
+        }
+
+        function recalcAllMs() {
+          var n = parseInt((document.getElementById('milestoneCount') || {value:'0'}).value) || 0;
+          for (var k = 1; k <= n; k++) {
+            if (document.getElementById('msPct_' + k)) calcMs(k);
+          }
         }
 
         // ── Save handler ─────────────────────────────────────
@@ -793,17 +829,28 @@ function openNewPurchaseOrderDialog(selectedOrg) {
               var msCount = parseInt((document.getElementById('milestoneCount') || {value:'0'}).value) || 0;
               if (!msCount) { document.getElementById('milestoneCount').classList.add('error'); valid = false; }
               for (var mi = 1; mi <= msCount; mi++) {
-                var msName   = (document.getElementById('msName_'   + mi) || {value:''}).value.trim();
+                var msName   = (document.getElementById('msName_'  + mi) || {value:''}).value.trim();
+                var msPct    = parseFloat((document.getElementById('msPct_' + mi) || {value:'0'}).value) || 0;
                 var msAmt    = parseFloat((document.getElementById('msAmount_' + mi) || {value:'0'}).value) || 0;
-                var msDesc   = (document.getElementById('msDesc_'   + mi) || {value:''}).value.trim();
-                var msMonth  = (document.getElementById('msMonth_'  + mi) || {value:''}).value;
-                var msNameEl = document.getElementById('msName_'   + mi);
-                var msAmtEl  = document.getElementById('msAmount_' + mi);
-                var msMoEl   = document.getElementById('msMonth_'  + mi);
+                var msDesc   = (document.getElementById('msDesc_'  + mi) || {value:''}).value.trim();
+                var msMonth  = (document.getElementById('msMonth_' + mi) || {value:''}).value;
+                var msHoursEl = document.getElementById('msHours_' + mi);
+                var msHours  = msHoursEl ? (parseFloat(msHoursEl.value) || 0) : 0;
+                var msNameEl = document.getElementById('msName_'  + mi);
+                var msPctEl  = document.getElementById('msPct_'   + mi);
+                var msMoEl   = document.getElementById('msMonth_' + mi);
                 if (!msName)  { if (msNameEl) msNameEl.classList.add('error'); valid = false; }
-                if (!msAmt)   { if (msAmtEl)  msAmtEl.classList.add('error');  valid = false; }
+                if (!msPct)   { if (msPctEl)  msPctEl.classList.add('error');  valid = false; }
                 if (!msMonth) { if (msMoEl)   msMoEl.classList.add('error');   valid = false; }
-                billMilestones.push({ name: msName, amount: msAmt, description: msDesc, month: msMonth });
+                billMilestones.push({
+                  name:         msName,
+                  amount:       msAmt,
+                  description:  msDesc,
+                  month:        msMonth,
+                  percentage:   msPct,
+                  pricePerHour: billingType === 'Hourly' ? pricePerHour : 0,
+                  hours:        msHours,
+                });
               }
             }
           }
@@ -1005,6 +1052,8 @@ function saveNewPurchaseOrder(data) {
         billHoursReport:     data.billHoursReport  || '',
         billInvoiceType:     data.billInvoiceType  || '',
         billPeriod:          data.billPeriod       || 'Monthly',
+        pricePerHour:        data.pricePerHour     || 0,
+        hours:               data.hours            || 0,
       });
       billingCount = br.count || 0;
       billingError = br.ok ? '' : (br.error || 'Unknown billing error');

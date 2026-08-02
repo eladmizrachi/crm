@@ -112,7 +112,7 @@ const BILLING_HEADERS = [
   'Year', 'Month', 'Customer', 'Billing Type', 'Paying Customer',
   'Paying Customer Id', 'Amount', 'Milestone name', 'Milestone description',
   'PO Number', 'Payment terms', 'Project type', 'Hours report', 'Initiate invoice type',
-  'Billing period', 'Billing description'
+  'Billing period', 'Billing description', 'Price per hour', 'Number of hours'
 ];
 
 // Ensures all required headers exist in row 1; appends any that are missing.
@@ -146,7 +146,7 @@ function saveBillingRecords(d) {
     ensureBillingHeaders_(sh);
     const rows = buildBillingRows_(d);
     if (rows.length > 0) {
-      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 16).setValues(rows);
+      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 18).setValues(rows);
     }
     return { ok: true, count: rows.length };
   } catch(e) {
@@ -167,6 +167,8 @@ function buildBillingRows_(d) {
   const project      = d.project              || '';
   const hoursReport  = d.billHoursReport      || '';
   const invoiceType  = d.billInvoiceType      || '';
+  const pricePerHour = d.pricePerHour         || '';
+  const numHours     = d.hours                || '';
 
   // Milestones — billing period/description = project type
   if (d.isMilestones) {
@@ -176,7 +178,8 @@ function buildBillingRows_(d) {
       const year = ms.month ? ms.month.split('-')[0] : '';
       rows.push([year, ms.month || '', org, 'milestones', customer, customerId,
         parseFloat(ms.amount) || 0, ms.name || '', ms.description || '',
-        poNumber, paymentTerms, project, hoursReport, invoiceType, '', project]);
+        poNumber, paymentTerms, project, hoursReport, invoiceType, '', project,
+        ms.pricePerHour || '', ms.hours || '']);
     });
     return rows;
   }
@@ -250,7 +253,7 @@ function buildBillingRows_(d) {
 
       rows.push([yr, monthStr, org, 'recurring', customer, customerId,
         rowAmount, '', '', poNumber, paymentTerms, project, hoursReport, invoiceType,
-        period, billingDesc]);
+        period, billingDesc, '', '']);
 
       cur.setMonth(cur.getMonth() + step);
       isFirst = false;
@@ -262,7 +265,7 @@ function buildBillingRows_(d) {
     const billingDesc = project;
     rows.push([year, d.billMonth || '', org, 'upfront', customer, customerId,
       amount, '', '', poNumber, paymentTerms, project, hoursReport, invoiceType,
-      '', billingDesc]);
+      '', billingDesc, pricePerHour, numHours]);
   }
 
   return rows;
