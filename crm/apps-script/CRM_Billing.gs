@@ -120,15 +120,17 @@ const BILLING_HEADERS = [
 
 // Ensures all required headers exist in row 1; appends any that are missing.
 function ensureBillingHeaders_(sh) {
-  const lastCol   = sh.getLastColumn();
-  const existing  = lastCol > 0
+  const lastCol      = sh.getLastColumn();
+  const existing     = lastCol > 0
     ? sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).trim(); })
     : [];
+  const existingLow  = existing.map(function(h) { return h.toLowerCase(); });
   BILLING_HEADERS.forEach(function(hdr) {
-    if (existing.indexOf(hdr) === -1) {
+    if (existingLow.indexOf(hdr.toLowerCase()) === -1) {
       const newCol = sh.getLastColumn() + 1;
       sh.getRange(1, newCol).setValue(hdr);
       existing.push(hdr);
+      existingLow.push(hdr.toLowerCase());
     }
   });
 }
