@@ -63,10 +63,10 @@ function getMonthlyBillingRecords(year, month) {
     const colInvoiceType   = findCol('Initiate invoice type');
     const colBillingPeriod = findCol('Billing period');
     const colBillingDesc   = findCol('Billing description');
-    // Fixed positions: Q = index 16, R = index 17, S = index 18 (0-based)
+    // Q and R are fixed positions (not in managed headers)
     const colPricePerHour  = 16;
     const colNumHours      = 17;
-    const colMsPct         = 18;
+    const colMsPct         = findCol('Milestone rate');
 
     const targetMonth = String(year) + '-' + String(month).padStart(2, '0');
 
@@ -97,7 +97,7 @@ function getMonthlyBillingRecords(year, month) {
         billingDesc:    colBillingDesc   !== -1 ? String(row[colBillingDesc]   || '') : '',
         pricePerHour:   parseFloat(row[colPricePerHour]) || 0,
         numHours:       parseFloat(row[colNumHours])     || 0,
-        msPct:          parseFloat(row[colMsPct])        || 0,
+        msPct:          colMsPct !== -1 ? (parseFloat(row[colMsPct]) || 0) : 0,
       });
     });
 

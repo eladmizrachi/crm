@@ -114,7 +114,7 @@ const BILLING_HEADERS = [
   'PO Number', 'Payment terms', 'Project type', 'Hours report', 'Initiate invoice type',
   'Billing period', 'Billing description'
 ];
-// Col Q (17) = Price per hour, Col R (18) = Number of hours.
+// Col Q (17) = Price per hour, Col R (18) = Number of hours, Col S (19) = Milestone rate.
 // Written at fixed positions; NOT managed by ensureBillingHeaders_ to avoid
 // misalignment when the sheet already has data beyond column P.
 
