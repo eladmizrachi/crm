@@ -112,8 +112,11 @@ const BILLING_HEADERS = [
   'Year', 'Month', 'Customer', 'Billing Type', 'Paying Customer',
   'Paying Customer Id', 'Amount', 'Milestone name', 'Milestone description',
   'PO Number', 'Payment terms', 'Project type', 'Hours report', 'Initiate invoice type',
-  'Billing period', 'Billing description', 'Price per hour', 'Number of hours'
+  'Billing period', 'Billing description'
 ];
+// Col Q (17) = Price per hour, Col R (18) = Number of hours.
+// Written at fixed positions; NOT managed by ensureBillingHeaders_ to avoid
+// misalignment when the sheet already has data beyond column P.
 
 // Ensures all required headers exist in row 1; appends any that are missing.
 function ensureBillingHeaders_(sh) {
