@@ -151,7 +151,7 @@ function saveBillingRecords(d) {
     ensureBillingHeaders_(sh);
     const rows = buildBillingRows_(d);
     if (rows.length > 0) {
-      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 18).setValues(rows);
+      sh.getRange(sh.getLastRow() + 1, 1, rows.length, 19).setValues(rows);
     }
     return { ok: true, count: rows.length };
   } catch(e) {
@@ -184,7 +184,7 @@ function buildBillingRows_(d) {
       rows.push([year, ms.month || '', org, 'milestones', customer, customerId,
         parseFloat(ms.amount) || 0, ms.name || '', ms.description || '',
         poNumber, paymentTerms, project, hoursReport, invoiceType, '', project,
-        ms.pricePerHour || '', ms.hours || '']);
+        ms.pricePerHour || '', ms.hours || '', ms.percentage || '']);
     });
     return rows;
   }
@@ -258,7 +258,7 @@ function buildBillingRows_(d) {
 
       rows.push([yr, monthStr, org, 'recurring', customer, customerId,
         rowAmount, '', '', poNumber, paymentTerms, project, hoursReport, invoiceType,
-        period, billingDesc, '', '']);
+        period, billingDesc, '', '', '']);
 
       cur.setMonth(cur.getMonth() + step);
       isFirst = false;
@@ -270,7 +270,7 @@ function buildBillingRows_(d) {
     const billingDesc = project;
     rows.push([year, d.billMonth || '', org, 'upfront', customer, customerId,
       amount, '', '', poNumber, paymentTerms, project, hoursReport, invoiceType,
-      '', billingDesc, pricePerHour, numHours]);
+      '', billingDesc, pricePerHour, numHours, '']);
   }
 
   return rows;

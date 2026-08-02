@@ -63,9 +63,10 @@ function getMonthlyBillingRecords(year, month) {
     const colInvoiceType   = findCol('Initiate invoice type');
     const colBillingPeriod = findCol('Billing period');
     const colBillingDesc   = findCol('Billing description');
-    // Fixed positions: Q = index 16, R = index 17 (0-based)
+    // Fixed positions: Q = index 16, R = index 17, S = index 18 (0-based)
     const colPricePerHour  = 16;
     const colNumHours      = 17;
+    const colMsPct         = 18;
 
     const targetMonth = String(year) + '-' + String(month).padStart(2, '0');
 
@@ -96,6 +97,7 @@ function getMonthlyBillingRecords(year, month) {
         billingDesc:    colBillingDesc   !== -1 ? String(row[colBillingDesc]   || '') : '',
         pricePerHour:   parseFloat(row[colPricePerHour]) || 0,
         numHours:       parseFloat(row[colNumHours])     || 0,
+        msPct:          parseFloat(row[colMsPct])        || 0,
       });
     });
 
@@ -312,7 +314,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
       '<div class="table-wrap"><table><thead><tr>' +
       '<th>PO #</th><th>Customer</th><th>Project type</th><th>Billing Type</th>' +
       '<th>Billing period</th><th>Paying Customer</th><th>Payment terms</th>' +
-      '<th>Price/hr</th><th>Hours</th><th>Amount (&#8362;)</th><th>% of Total</th>' +
+      '<th>Price/hr</th><th>Hours</th><th>Amount (&#8362;)</th><th>Milestone %</th>' +
       '<th>Hours report</th><th>Invoice type</th>' +
       '<th>Milestone</th><th>Description</th><th>Billing description</th>' +
       '</tr></thead><tbody>';
@@ -349,7 +351,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
           '<td class="amount">' + (r.pricePerHour ? '&#8362; ' + fmt(r.pricePerHour) : '') + '</td>' +
           '<td>' + (r.numHours ? fmt(r.numHours) : '') + '</td>' +
           '<td class="amount">&#8362; ' + fmt(r.amount) + '</td>' +
-          '<td style="text-align:right;color:#5c6bc0;white-space:nowrap">' + (total > 0 ? (r.amount / total * 100).toFixed(1) + '%' : '') + '</td>' +
+          '<td style="text-align:right;color:#5c6bc0;white-space:nowrap">' + (r.type.toLowerCase() === 'milestones' && r.msPct ? r.msPct.toFixed(1) + '%' : '') + '</td>' +
           '<td>' + esc(r.hoursReport) + '</td>' +
           '<td>' + esc(r.invoiceType) + '</td>' +
           '<td>' + esc(r.msName) + '</td>' +
@@ -363,7 +365,7 @@ function buildMonthlyReportHtml_(initYear, initMonth) {
         '<td colspan="7" style="text-align:right">Subtotal — ' + esc(proj) + ':</td>' +
         '<td colspan="2"></td>' +
         '<td class="amount">&#8362; ' + fmt(g.total) + '</td>' +
-        '<td style="text-align:right;color:#5c6bc0">' + (total > 0 ? (g.total / total * 100).toFixed(1) + '%' : '') + '</td>' +
+        '<td></td>' +
         '<td colspan="5"></td>' +
         '</tr>';
     });
