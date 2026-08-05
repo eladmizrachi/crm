@@ -77,6 +77,10 @@ function createInvoicesFromBillingTest() {
   const idxStatus      = col('invoice status');
   const idxCreatedAt   = col('invoice created at');
 
+  // Only process rows matching the current month (cron runs on billing date)
+  var now            = new Date();
+  var currentMonthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
   let token;
   try {
     token = getGreenInvoiceToken_();
@@ -92,6 +96,10 @@ function createInvoicesFromBillingTest() {
 
     if (String(row[idxType]).toLowerCase().trim() !== 'recurring') { skipped++; continue; }
     if (idxInvoiceId !== -1 && row[idxInvoiceId] && String(row[idxInvoiceId]).trim() !== '') { skipped++; continue; }
+
+    // Skip rows not belonging to the current month
+    const rowMonth = String(row[idxMonth] || '').trim().substring(0, 7);
+    if (rowMonth !== currentMonthStr) { skipped++; continue; }
 
     const monthStr     = String(row[idxMonth]       || '').trim();
     const paying       = String(row[idxPaying]      || '').trim();
@@ -176,6 +184,15 @@ function gi_createDocument_(token, d) {
           currency:     'ILS',
           currencyRate: 1,
           vatType:      1
+        }
+      ],
+      payment: [
+        {
+          date:         dueDate,
+          type:         3,
+          price:        d.amount,
+          currency:     'ILS',
+          currencyRate: 1
         }
       ]
     };
