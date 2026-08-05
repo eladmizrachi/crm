@@ -150,8 +150,8 @@ function createInvoicesFromBillingTest() {
 // ── Build and POST a single document to GreenInvoice ───────
 function gi_createDocument_(token, d) {
   try {
-    var invoiceDate = gi_invoiceDateFromMonth_();
-    var dueDate     = gi_dueDateFromMonth_(d.monthStr, d.paymentTerms);
+    var invoiceDate = gi_todayStr_();
+    var dueDate     = gi_dueDateFromNow_(d.paymentTerms);
 
     // 305 = Tax Invoice, 300 = Proforma Invoice
     var docType = (d.invoiceType.toLowerCase().indexOf('proforma')  !== -1 ||
@@ -225,24 +225,23 @@ function gi_createDocument_(token, d) {
 
 // ── Date helpers ───────────────────────────────────────────
 
-// Invoice date = today (the date the invoice is created/sent)
-function gi_invoiceDateFromMonth_() {
+// Today's date as YYYY-MM-DD
+function gi_todayStr_() {
   var now = new Date();
   return now.getFullYear() + '-' +
     String(now.getMonth() + 1).padStart(2, '0') + '-' +
     String(now.getDate()).padStart(2, '0');
 }
 
-// Due date = last day of billing month + paymentTermsDays
-function gi_dueDateFromMonth_(monthStr, paymentTermsDays) {
-  var parts = String(monthStr).split('-');
-  if (parts.length < 2) return '';
-  var lastDay = new Date(+parts[0], +parts[1], 0); // day 0 of next month = last day of billing month
-  lastDay.setDate(lastDay.getDate() + (paymentTermsDays || 0));
-  var y = lastDay.getFullYear();
-  var m = String(lastDay.getMonth() + 1).padStart(2, '0');
-  var d = String(lastDay.getDate()).padStart(2, '0');
-  return y + '-' + m + '-' + d;
+// Due date = end of current month (invoice creation month) + paymentTermsDays
+// e.g. invoice created in August, terms 30 → Aug 31 + 30 = Sep 30
+function gi_dueDateFromNow_(paymentTermsDays) {
+  var now        = new Date();
+  var lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0); // last day of current month
+  lastOfMonth.setDate(lastOfMonth.getDate() + (paymentTermsDays || 0));
+  return lastOfMonth.getFullYear() + '-' +
+    String(lastOfMonth.getMonth() + 1).padStart(2, '0') + '-' +
+    String(lastOfMonth.getDate()).padStart(2, '0');
 }
 
 function gi_nowStr_() {
