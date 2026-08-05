@@ -29,6 +29,9 @@ function onOpen() {
       .addSeparator()
       .addItem("📊 Monthly Billing Report","openMonthlyReportDialog")
       .addItem("💰 Cashflow Report",        "openCashflowReportDialog")
+      .addSeparator()
+      .addItem("🧪 Setup Billing Test Sheet",  "setupBillingTestSheet")
+      .addItem("📤 Create Invoices (Test)",    "createInvoicesFromBillingTest")
       .addToUi();
   }
 
