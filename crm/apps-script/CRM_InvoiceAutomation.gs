@@ -150,7 +150,7 @@ function createInvoicesFromBillingTest() {
 // ── Build and POST a single document to GreenInvoice ───────
 function gi_createDocument_(token, d) {
   try {
-    var invoiceDate = gi_invoiceDateFromMonth_(d.monthStr);
+    var invoiceDate = gi_invoiceDateFromMonth_();
     var dueDate     = gi_dueDateFromMonth_(d.monthStr, d.paymentTerms);
 
     // 305 = Tax Invoice, 300 = Proforma Invoice
@@ -225,11 +225,12 @@ function gi_createDocument_(token, d) {
 
 // ── Date helpers ───────────────────────────────────────────
 
-// Invoice date = first day of billing month (YYYY-MM-01)
-function gi_invoiceDateFromMonth_(monthStr) {
-  var parts = String(monthStr).split('-');
-  if (parts.length < 2) return '';
-  return parts[0] + '-' + String(parts[1]).padStart(2, '0') + '-01';
+// Invoice date = today (the date the invoice is created/sent)
+function gi_invoiceDateFromMonth_() {
+  var now = new Date();
+  return now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
 }
 
 // Due date = last day of billing month + paymentTermsDays
