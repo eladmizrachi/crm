@@ -102,7 +102,7 @@ function createInvoicesFromBillingTest() {
     const rowMonth = normalizeMonthCell_(row[idxMonth]);
     if (rowMonth !== currentMonthStr) { skipped++; continue; }
 
-    const monthStr     = String(row[idxMonth]       || '').trim();
+    // rowMonth is already normalized to 'YYYY-MM' — reuse it for date calculations
     const paying       = String(row[idxPaying]      || '').trim();
     const payingId     = String(row[idxPayingId]    || '').trim();
     const amount       = parseFloat(row[idxAmount]) || 0;
@@ -111,14 +111,14 @@ function createInvoicesFromBillingTest() {
     const invoiceType  = String(row[idxInvoiceType] || '').trim();
     const billingDesc  = String(row[idxBillingDesc] || '').trim();
 
-    if (!payingId || !monthStr || amount <= 0) {
+    if (!payingId || !rowMonth || amount <= 0) {
       Logger.log('Row ' + (i + 1) + ': skipped — missing paying customer id, month, or amount.');
       skipped++;
       continue;
     }
 
     const result = gi_createDocument_(token, {
-      monthStr:     monthStr,
+      monthStr:     rowMonth,
       payingId:     payingId,
       payingName:   paying,
       amount:       amount,
@@ -184,7 +184,7 @@ function gi_createDocument_(token, d) {
           price:        d.amount,
           currency:     'ILS',
           currencyRate: 1,
-          vatType:      1
+          vatType:      0
         }
       ],
       payment: [
