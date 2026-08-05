@@ -97,8 +97,9 @@ function createInvoicesFromBillingTest() {
     if (String(row[idxType]).toLowerCase().trim() !== 'recurring') { skipped++; continue; }
     if (idxInvoiceId !== -1 && row[idxInvoiceId] && String(row[idxInvoiceId]).trim() !== '') { skipped++; continue; }
 
-    // Skip rows not belonging to the current month
-    const rowMonth = String(row[idxMonth] || '').trim().substring(0, 7);
+    // Skip rows not belonging to the current month.
+    // normalizeMonthCell_ handles both Date objects and 'YYYY-MM' strings from the sheet.
+    const rowMonth = normalizeMonthCell_(row[idxMonth]);
     if (rowMonth !== currentMonthStr) { skipped++; continue; }
 
     const monthStr     = String(row[idxMonth]       || '').trim();
