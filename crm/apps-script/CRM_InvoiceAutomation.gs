@@ -147,11 +147,41 @@ function createInvoicesFromBillingTest() {
 }
 
 
+// ── Fetch client details (email) from GreenInvoice ─────────
+function gi_getClientDetails_(token, clientId) {
+  try {
+    var res = UrlFetchApp.fetch('https://api.greeninvoice.co.il/api/v1/clients/' + clientId, {
+      method:             'get',
+      headers:            { 'Authorization': 'Bearer ' + token },
+      muteHttpExceptions: true
+    });
+    Logger.log('GI client details response code: ' + res.getResponseCode());
+    Logger.log('GI client details response body: ' + res.getContentText());
+    if (res.getResponseCode() !== 200) return { emails: [] };
+    var parsed = JSON.parse(res.getContentText());
+    // emails may be a string, array, or nested — normalise to array
+    var emails = [];
+    if (Array.isArray(parsed.emails)) {
+      emails = parsed.emails.filter(function(e) { return e && String(e).trim(); });
+    } else if (parsed.email && String(parsed.email).trim()) {
+      emails = [String(parsed.email).trim()];
+    }
+    return { emails: emails };
+  } catch(e) {
+    Logger.log('GI client details error: ' + e.message);
+    return { emails: [] };
+  }
+}
+
+
 // ── Build and POST a single document to GreenInvoice ───────
 function gi_createDocument_(token, d) {
   try {
     var invoiceDate = gi_todayStr_();
     var dueDate     = gi_dueDateFromNow_(d.paymentTerms);
+
+    // Fetch client email before building payload
+    var clientDetails = gi_getClientDetails_(token, d.payingId);
 
     // 305 = Tax Invoice, 300 = Proforma Invoice
     var docType = (d.invoiceType.toLowerCase().indexOf('proforma')  !== -1 ||
@@ -159,6 +189,16 @@ function gi_createDocument_(token, d) {
 
     // Top-level description: billing desc + bare PO number
     var description = d.billingDesc + (d.poNumber ? ' ' + d.poNumber : '');
+
+    var clientObj = {
+      id:   d.payingId,
+      name: d.payingName,
+      add:  false,
+      self: false
+    };
+    if (clientDetails.emails.length > 0) {
+      clientObj.emails = clientDetails.emails;
+    }
 
     var payload = {
       type:        docType,
@@ -170,12 +210,7 @@ function gi_createDocument_(token, d) {
       signed:      true,
       rounding:    false,
       description: description,
-      client: {
-        id:   d.payingId,
-        name: d.payingName,
-        add:  false,
-        self: false
-      },
+      client:      clientObj,
       income: [
         {
           catalogNum:   '',
