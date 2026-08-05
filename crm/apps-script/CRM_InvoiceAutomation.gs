@@ -76,6 +76,7 @@ function createInvoicesFromBillingTest() {
   const idxInvoiceId   = col('invoice id');
   const idxStatus      = col('invoice status');
   const idxCreatedAt   = col('invoice created at');
+  const idxInvoiceNum  = col('invoice number');
 
   // Only process rows matching the current month (cron runs on billing date)
   var now            = new Date();
@@ -130,10 +131,14 @@ function createInvoicesFromBillingTest() {
 
     const rowNum = i + 1;
     if (result.ok) {
-      if (idxInvoiceId !== -1) testSheet.getRange(rowNum, idxInvoiceId + 1).setValue(result.invoiceId);
-      if (idxStatus    !== -1) testSheet.getRange(rowNum, idxStatus    + 1).setValue('Created');
-      if (idxCreatedAt !== -1) testSheet.getRange(rowNum, idxCreatedAt + 1).setValue(gi_nowStr_());
-      Logger.log('Row ' + rowNum + ': invoice created — ' + result.invoiceId);
+      // Fetch the invoice number from the created document
+      var invoiceNum = gi_getDocumentNumber_(token, result.invoiceId);
+
+      if (idxInvoiceId  !== -1) testSheet.getRange(rowNum, idxInvoiceId  + 1).setValue(result.invoiceId);
+      if (idxInvoiceNum !== -1) testSheet.getRange(rowNum, idxInvoiceNum + 1).setValue(invoiceNum);
+      if (idxStatus     !== -1) testSheet.getRange(rowNum, idxStatus     + 1).setValue('Created');
+      if (idxCreatedAt  !== -1) testSheet.getRange(rowNum, idxCreatedAt  + 1).setValue(gi_nowStr_());
+      Logger.log('Row ' + rowNum + ': invoice created — id: ' + result.invoiceId + ', number: ' + invoiceNum);
       created++;
     } else {
       if (idxStatus    !== -1) testSheet.getRange(rowNum, idxStatus    + 1).setValue('Error: ' + result.error);
@@ -254,6 +259,24 @@ function gi_createDocument_(token, d) {
     return { ok: true, invoiceId: parsed.id };
   } catch(e) {
     return { ok: false, error: e.message };
+  }
+}
+
+
+// ── Fetch invoice number from created document ─────────────
+function gi_getDocumentNumber_(token, documentId) {
+  try {
+    var res = UrlFetchApp.fetch('https://api.greeninvoice.co.il/api/v1/documents/' + documentId, {
+      method:             'get',
+      headers:            { 'Authorization': 'Bearer ' + token },
+      muteHttpExceptions: true
+    });
+    Logger.log('GI get document response code: ' + res.getResponseCode());
+    var parsed = JSON.parse(res.getContentText());
+    return parsed.number || '';
+  } catch(e) {
+    Logger.log('GI get document error: ' + e.message);
+    return '';
   }
 }
 
