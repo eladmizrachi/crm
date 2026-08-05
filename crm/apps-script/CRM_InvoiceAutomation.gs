@@ -194,8 +194,9 @@ function gi_createDocument_(token, d) {
     Logger.log('GI response body: '  + res.getContentText());
 
     var parsed = JSON.parse(res.getContentText());
-    if (res.getResponseCode() !== 200 || !parsed.id) {
-      return { ok: false, error: parsed.errorMessage || parsed.error || ('HTTP ' + res.getResponseCode()) };
+    var code   = res.getResponseCode();
+    if ((code !== 200 && code !== 201) || !parsed.id) {
+      return { ok: false, error: parsed.errorMessage || parsed.error || ('HTTP ' + code) };
     }
     return { ok: true, invoiceId: parsed.id };
   } catch(e) {
