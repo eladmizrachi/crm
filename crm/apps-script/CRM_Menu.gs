@@ -30,8 +30,8 @@ function onOpen() {
       .addItem("📊 Monthly Billing Report","openMonthlyReportDialog")
       .addItem("💰 Cashflow Report",        "openCashflowReportDialog")
       .addSeparator()
-      .addItem("🧪 Setup Billing Test Sheet",  "setupBillingTestSheet")
-      .addItem("📤 Create Invoices (Test)",    "createInvoicesFromBillingTest")
+      .addItem("🔍 Preview Invoices",  "openInvoicePreviewDialog")
+      .addItem("📤 Create Invoices",   "createInvoicesFromBilling")
       .addToUi();
   }
 
