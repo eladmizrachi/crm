@@ -232,7 +232,7 @@ function buildBillingRows_(d) {
         const fromDay  = (!isExactCycle && isFirst && startDay > 1) ? startDay : 1;
         const toDay    = (!isExactCycle && isLast && endDay < lastDayOfEndMonth) ? endDay : dInMonth;
         rowAmount   = Math.round((toDay - fromDay + 1) / dInMonth * baseAmount * 100) / 100;
-        billingDesc = project + ' - ' + monthName_(cur) + ' ' + yr;
+        billingDesc = org + ' - ' + project + ' - ' + monthName_(cur) + ' ' + yr;
 
       } else {
         // Quarterly / Yearly: sum up prorated months across the period
@@ -252,7 +252,7 @@ function buildBillingRows_(d) {
         // Description: show month range, capped at renewal month
         const periodEndMo = new Date(cur.getFullYear(), cur.getMonth() + step - 1, 1);
         const capEnd = periodEndMo <= endMo ? periodEndMo : endMo;
-        billingDesc = project + ' - ' + monthName_(cur) + ' ' + yr
+        billingDesc = org + ' - ' + project + ' - ' + monthName_(cur) + ' ' + yr
           + ' - ' + monthName_(capEnd) + ' ' + capEnd.getFullYear();
       }
 
@@ -267,7 +267,7 @@ function buildBillingRows_(d) {
   } else {
     const amount    = parseFloat(d.totalAmount) || parseFloat(d.amount) || 0;
     const year      = d.billMonth ? d.billMonth.split('-')[0] : '';
-    const billingDesc = project;
+    const billingDesc = org + ' - ' + project;
     rows.push([year, d.billMonth || '', org, 'upfront', customer, customerId,
       amount, '', '', poNumber, paymentTerms, project, hoursReport, invoiceType,
       '', billingDesc, pricePerHour, numHours, '']);

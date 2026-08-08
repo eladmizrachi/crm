@@ -33,6 +33,7 @@ function openInvoicePreviewDialog() {
 
   var idxType        = col('billing type');
   var idxMonth       = col('month');
+  var idxCustomer    = col('customer');
   var idxPaying      = col('paying customer');
   var idxPayingId    = col('paying customer id');
   var idxAmount      = col('amount');
@@ -55,6 +56,7 @@ function openInvoicePreviewDialog() {
     var rowMonth = normalizeMonthCell_(row[idxMonth]);
     if (rowMonth !== currentMonthStr) continue;
 
+    var customer     = idxCustomer !== -1 ? String(row[idxCustomer] || '').trim() : '';
     var paying       = String(row[idxPaying]      || '').trim();
     var payingId     = String(row[idxPayingId]    || '').trim();
     var amount       = parseFloat(row[idxAmount]) || 0;
@@ -77,6 +79,7 @@ function openInvoicePreviewDialog() {
     var description = billingDesc + (poNumber ? ' ' + poNumber : '');
 
     previews.push({
+      customer:    customer,
       paying:      paying,
       description: description,
       itemDesc:    billingDesc,
@@ -118,7 +121,7 @@ function openInvoicePreviewDialog() {
       ' &nbsp;·&nbsp; Total net amount: <b>&#8362; ' + gi_fmt_(totalAmt) + '</b></div>';
 
     html += '<table><thead><tr>' +
-      '<th>#</th><th>Paying Customer</th><th>Description</th>' +
+      '<th>#</th><th>Customer</th><th>Paying Customer</th><th>Description</th>' +
       '<th>Item Description</th><th>Amount (net)</th>' +
       '<th>Type</th><th>Email</th><th>Due Date</th>' +
       '</tr></thead><tbody>';
@@ -130,6 +133,7 @@ function openInvoicePreviewDialog() {
         : '<span class="pro">Proforma</span>';
       html += '<tr>' +
         '<td>' + (j + 1) + '</td>' +
+        '<td>' + gi_esc_(p.customer)    + '</td>' +
         '<td>' + gi_esc_(p.paying)      + '</td>' +
         '<td>' + gi_esc_(p.description) + '</td>' +
         '<td>' + gi_esc_(p.itemDesc)    + '</td>' +
